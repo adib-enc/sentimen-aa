@@ -10,9 +10,8 @@ factory = StemmerFactory()
 stemmer = factory.create_stemmer()
 """
 
+# https://github.com/masdevid/ID-Stopwords
 stopwords = open("dummy/id.stopwords.02.01.2016.txt").read()
-# print(stopwords.split("\n"))
-# exit
 
 class BaseIO:
     datas = {
@@ -136,33 +135,38 @@ class PreProcessor(Processor):
         # Stemming
     """
     def tokenizeAndClean(self, text, toWords = False):
-        # tokenized = ""
         tokenized = re.sub("[\r\n]"," ", text)
+        
         if toWords:
-            tokenized = re.split(r'(\W+)', tokenized)
+            tokenized = [e for e in re.split(r'(\W+)', tokenized) if ' ' not in e]
+            
             res = []
             for t in tokenized:
                 if t == '':
-                    print(t)
+                    # print(t)
                     continue
 
                 lowered = t.lower()
 
-                if lowered in self.wordsCache.keys():
-                    res.append(self.wordsCache[lowered])
+                if len(t) < 2:
                     continue
+
+                # print(lowered, self.wordsCache.keys())
+                # if lowered in self.wordsCache.keys():
+                #     # res.append(self.wordsCache[lowered])
+                #     continue
 
                 if t!="\r" and t not in string.punctuation and t not in stopwords and t != '':
                     wordresult = self.stripLowerAndStem(t)
-                    res.append(wordresult)
-                    self.wordsCache[lowered] = wordresult
+                    if wordresult != '':
+                        res.append(wordresult)
+                    # self.wordsCache[lowered] = wordresult
                 self.progress += 1
                 self.current['index'] = self.progress
                 self.printProgress()
-            # tokenized = [ self.stripLowerAndStem(t) for t in tokenized if t!="\r" and t not in string.punctuation and t not in stopwords and t != '' ]
+
             ret = res
-            # print()
-            # exit()
+            
         else:
             tokenized = re.split(r"[\.\?\!][ \n]", tokenized) # sentences
             tokenized = [t.strip().lower() for t in tokenized if t!="\r"]
@@ -178,44 +182,30 @@ class PreProcessor(Processor):
         for crawled in keys:
             df = crawlResult[crawled]['dataframe']
             dftext = df['text']
+            self.current['file'] = crawled
             df["preprocessed"] = 1
-            print(crawled)
             preprocesseds = []
-            
             self.dftext = dftext
             
-            print("self.dftext ",len(self.dftext))
+            print(crawled)
+            print("self.dftext length",len(self.dftext))
             for index, text in enumerate(self.dftext):
                 print("text::",index)
                 preprocessed = self.tokenizeAndClean(text, True)
-                self.preprocesseds.append(preprocessed)
-            # for index, row in df.iterrows():
-            #     #cleaning
-            #     print("text::",index)
-            #     self.current['file'] = row
-            #     preprocessed = self.tokenizeAndClean(row['text'], True)
-            #     self.preprocesseds.append(preprocessed)
-            #     preprocesseds.append(preprocessed)
-                # if index == 20:
-                #     break
+                if preprocessed != '':
+                    preprocesseds.append(" ".join(preprocessed))
+                
+                self.preprocesseds.append(preprocesseds)
+                # break
             
-            # df["preprocessed"] = preprocesseds
-            # df["cleaned"] = 1
-            # df["caseFolded"] = 1
-            # df["stopworded"] = 1
-            # df["stemmed"] = 1
-
+            try:
+                df['preprocessed'] = preprocesseds
+                df.to_csv('./dummy/' + crawled + ".preprocessed.csv")
+            except:
+                print(self.preprocesseds)
+                pass
+                
             self.results['preprocess']['dataframe'] = df
-            # print(df)
-            #     self.results['preprocess']["tokenized"]
-            # for i, df in enumerate(df):
-                # self.tokenize(crawlResult[crawled]['dataframe']['text'])
-            # print(crawled)
-            # print(crawlResult[crawled]['filename'])
-            # print(crawlResult[crawled]['dataframe']['text'])
-            # Tokenisasi
-            # self.tokenize(crawlResult[crawled]['dataframe']['text'])
-            break
         
     
     def classify(self):
@@ -275,11 +265,11 @@ pRegresi = RegresiLMProcessor()
 def initialize():
     crawled = [
         baseio.inputFmt("ruu.minol", 'ruu.minol.csv'),
-        baseio.inputFmt("ruu.minol2", 'ruu.minol2.csv'),
-        baseio.inputFmt("ruu.minuman.beralkohol", 'ruu.minuman.beralkohol.csv'),
-        baseio.inputFmt("ruu.minuman.beralkohol2", 'ruu.minuman.beralkohol2.csv'),
-        baseio.inputFmt("ruu.miras", 'ruu.miras.csv'),
-        baseio.inputFmt("ruu.miras2", 'ruu.miras2.csv'),
+        # baseio.inputFmt("ruu.minol2", 'ruu.minol2.csv'),
+        # baseio.inputFmt("ruu.minuman.beralkohol", 'ruu.minuman.beralkohol.csv'),
+        # baseio.inputFmt("ruu.minuman.beralkohol2", 'ruu.minuman.beralkohol2.csv'),
+        # baseio.inputFmt("ruu.miras", 'ruu.miras.csv'),
+        # baseio.inputFmt("ruu.miras2", 'ruu.miras2.csv'),
     ]
 
     preprocessor.resultToDict()
