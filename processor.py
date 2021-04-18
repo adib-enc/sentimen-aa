@@ -84,6 +84,7 @@ class PreProcessor(Processor):
     preprocesseds = []
     wordsCache = {}
     progress = 0
+    globalWords = []
 
     # factory = StemmerFactory()
     # stemmer = factory.create_stemmer()
@@ -290,8 +291,74 @@ class PreProcessor(Processor):
 
         self.results["sentimen.y1"]['dataframe'] = df
     
+    def formGlobalWords(self, toFile = True):
+        sentimenY1sResult = self.results['sentimen.y1']
+        keys = sentimenY1sResult.keys()
+
+        for sentimenY1 in keys:
+            df = sentimenY1sResult[sentimenY1]['dataframe']
+            dfpreprocessed = df['preprocessed']
+            # self.dfpreprocessed = dfpreprocessed
+            
+            for index, text in enumerate(dfpreprocessed):
+                print(sentimenY1,"text::",index)
+                
+                if isinstance(text, str):
+                    arr = text.split(' ')
+                    for w in arr:
+                        self.globalWords.append(w)
+        if toFile:
+            fo = open("dummy/globalWords",'w')
+            gw = map(lambda x:x+'\n', self.globalWords)
+            fo.writelines(gw)
+            fo.close()
+
+        pass
+
     def tfidfWeighting(self):
         print("classify::tfidfWeighting")
+
+        sentimenY1s = self.results['sentimen.y1']
+        keys = sentimenY1s.keys()
+        
+        df = None
+
+        for sentimenY1s in keys:
+            df = sentimenY1s[preprocessed]['dataframe']
+            dfpreprocessed = df['preprocessed']
+
+            df['classify_data'] = 1 # default as positiv
+            df['classified'] = 'p' # default as positiv
+            self.dfpreprocessed = dfpreprocessed
+            self.current['file'] = preprocessed
+            classify_datas = []
+            classifieds = []
+            
+            for index, text in enumerate(self.dfpreprocessed):
+                print(preprocessed,"text::",index)
+                dic, score = self.classifySentence(text)
+                classify_datas.append(dic)
+
+                if score > 0:
+                    classifieds.append('positive')
+                elif score == 0:
+                    classifieds.append('netral')
+                elif score < 0:
+                    classifieds.append('negative')
+                # print(self.classifySentence(sentence))
+                # break
+            
+            try:
+                df['classify_data'] = classify_datas
+                df['classified'] = classifieds
+                df.to_csv('./dummy/classified/' + preprocessed + ".classified.csv")
+            except Exception as e:
+                print(e)
+                print(classifieds)
+                pass
+
+        self.results["sentimen.y1"]['dataframe'] = df
+
         self.results["tfidf"] = 1
 
     def process(self):
@@ -357,11 +424,19 @@ def initialize():
 
     # print(crawled)
     for c in crawled:
-        # print(pPre.results['crawling'])
-        filen = './dummy/preprocess/' + c['name'] + '.preprocessed.csv'
+        # get classified
+        filen = './dummy/classified/' + c['name'] + '.classified.csv'
         print(filen)
         c['dataframe'] = pd.read_csv(filen, header=0, lineterminator='\n')
-        preprocessor.results['preprocess'][c['name']] = c
+        preprocessor.results['sentimen.y1'][c['name']] = c
+
+        # get preprocessed
+        # filen = './dummy/preprocess/' + c['name'] + '.preprocessed.csv'
+        # c['dataframe'] = pd.read_csv(filen, header=0, lineterminator='\n')
+        # preprocessor.results['preprocess'][c['name']] = c
+
+        # print(pPre.results['crawling'])
+        # get crawled
         # c['dataframe'] = pd.read_csv('./dummy/'+c['filename'], header=0)
         # preprocessor.results['crawling'][c['name']] = c
         # break
@@ -370,6 +445,7 @@ def initialize():
 initialize()
 # preprocessor.preproccess()
 # preprocessor.classify()
+# preprocessor.formGlobalWords()
 # search
 """
 df.loc[df['status_id'] == 'x1328208693461196803']
@@ -386,5 +462,6 @@ monkey patcher
 from processor import *; 
 from processor import *; preprocessor.preproccess();
 from processor import *; preprocessor.classify();
+from processor import *; preprocessor.formGlobalWords();
 df = preprocessor.results['crawling']['ruu.minol']['dataframe']; dfp = preprocessor.results['preprocess']['ruu.minol']['dataframe']
 """
