@@ -12,6 +12,7 @@ stemmer = factory.create_stemmer()
 
 # https://github.com/masdevid/ID-Stopwords
 stopwords = open("dummy/id.stopwords.02.01.2016.txt").read()
+insetLexicons = pd.read_csv("dummy/inset.lex/all-inset-lex.csv", header=0, lineterminator='\n').to_dict()
 
 class BaseIO:
     datas = {
@@ -119,6 +120,9 @@ class PreProcessor(Processor):
             pref = "::".join(pref)
             print("progress::", pref, self.progress)
 
+    def splitToWords(self, text):
+        return [e for e in re.split(r'(\W+)', text) if ' ' not in e]
+
     def stripLowerAndStem(self, text):
         t = text.strip().lower()
         if self.stemmer:
@@ -173,6 +177,32 @@ class PreProcessor(Processor):
             ret = tokenized
 
         return ret
+    
+    def classifyWord(self, word):
+        try:
+            score = insetLexicons[word]
+            return int(score)
+        except Exception as e:
+            print(e)
+            return 0
+    
+    def classifySentence(self, sentence):
+        score = 0
+        
+        try:
+            if isinstance(sentence, str):
+                sentence = self.splitToWords(sentence)
+
+            dic = {}
+            for word in sentence:
+                wscore = self.classifyWord(word)
+                score += wscore
+                dic[word] = wscore
+            return dic, score
+        except Exception as e:
+            print(e)
+            return {}, 0
+        
 
     def preproccess(self):
         print("preproccess")
@@ -200,17 +230,57 @@ class PreProcessor(Processor):
             
             try:
                 df['preprocessed'] = preprocesseds
-                df.to_csv('./dummy/' + crawled + ".preprocessed.csv")
-            except:
+                df.to_csv('./dummy/preprocess/' + crawled + ".preprocessed.csv")
+            except Exception as e:
+                print(e)
                 print(self.preprocesseds)
                 pass
                 
             self.results['preprocess']['dataframe'] = df
-        
     
     def classify(self):
         print("classify::inset lexicon")
-        self.results["sentimen.y1"] = 1
+
+        preprocessResult = self.results['preprocess']
+        keys = preprocessResult.keys()
+        
+        df = None
+
+        for preprocessed in keys:
+            df = preprocessResult[preprocessed]['dataframe']
+            dfpreprocessed = df['preprocessed']
+
+            df['classify_data'] = 1 # default as positiv
+            df['classified'] = 'p' # default as positiv
+            self.dfpreprocessed = dfpreprocessed
+            self.current['file'] = preprocessed
+            classify_datas = []
+            classifieds = []
+            
+            for index, text in enumerate(self.dfpreprocessed):
+                print(preprocessed,"text::",index)
+                dic, score = self.classifySentence(text)
+                classify_datas.append(dic)
+
+                if score > 0:
+                    classifieds.append('positive')
+                elif score == 0:
+                    classifieds.append('netral')
+                elif score < 0:
+                    classifieds.append('negative')
+                # print(self.classifySentence(sentence))
+                # break
+            
+            try:
+                df['classify_data'] = classify_datas
+                df['classified'] = classifieds
+                df.to_csv('./dummy/classified/' + preprocessed + ".classified.csv")
+            except Exception as e:
+                print(e)
+                print(classifieds)
+                pass
+
+        self.results["sentimen.y1"]['dataframe'] = df
     
     def tfidfWeighting(self):
         print("classify::tfidfWeighting")
@@ -218,6 +288,9 @@ class PreProcessor(Processor):
 
     def process(self):
         pass
+
+    def resetProgress(self):
+        self.progress = 0
 
 class KMeansProcessor(Processor):
     name = "KMeansProcessor"
@@ -265,11 +338,11 @@ pRegresi = RegresiLMProcessor()
 def initialize():
     crawled = [
         baseio.inputFmt("ruu.minol", 'ruu.minol.csv'),
-        # baseio.inputFmt("ruu.minol2", 'ruu.minol2.csv'),
-        # baseio.inputFmt("ruu.minuman.beralkohol", 'ruu.minuman.beralkohol.csv'),
-        # baseio.inputFmt("ruu.minuman.beralkohol2", 'ruu.minuman.beralkohol2.csv'),
-        # baseio.inputFmt("ruu.miras", 'ruu.miras.csv'),
-        # baseio.inputFmt("ruu.miras2", 'ruu.miras2.csv'),
+        baseio.inputFmt("ruu.minol2", 'ruu.minol2.csv'),
+        baseio.inputFmt("ruu.minuman.beralkohol", 'ruu.minuman.beralkohol.csv'),
+        baseio.inputFmt("ruu.minuman.beralkohol2", 'ruu.minuman.beralkohol2.csv'),
+        baseio.inputFmt("ruu.miras", 'ruu.miras.csv'),
+        baseio.inputFmt("ruu.miras2", 'ruu.miras2.csv'),
     ]
 
     preprocessor.resultToDict()
@@ -277,14 +350,18 @@ def initialize():
     # print(crawled)
     for c in crawled:
         # print(pPre.results['crawling'])
+        filen = './dummy/preprocess/' + c['name'] + '.preprocessed.csv'
+        print(filen)
+        c['dataframe'] = pd.read_csv(filen, header=0, lineterminator='\n')
         preprocessor.results['preprocess'][c['name']] = c
-        c['dataframe'] = pd.read_csv('./dummy/'+c['filename'], header=0)
-        preprocessor.results['crawling'][c['name']] = c
-        break
+        # c['dataframe'] = pd.read_csv('./dummy/'+c['filename'], header=0)
+        # preprocessor.results['crawling'][c['name']] = c
+        # break
 
 
 initialize()
-preprocessor.preproccess()
+# preprocessor.preproccess()
+# preprocessor.classify()
 # search
 """
 df.loc[df['status_id'] == 'x1328208693461196803']
@@ -298,6 +375,8 @@ df.loc[df['user_id'] == 'x765149955396734976']['text']
 """
 monkey patcher
 
+from processor import *; 
 from processor import *; preprocessor.preproccess();
+from processor import *; preprocessor.classify();
 df = preprocessor.results['crawling']['ruu.minol']['dataframe']; dfp = preprocessor.results['preprocess']['ruu.minol']['dataframe']
 """
