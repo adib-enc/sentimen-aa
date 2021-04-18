@@ -12,7 +12,7 @@ stemmer = factory.create_stemmer()
 
 # https://github.com/masdevid/ID-Stopwords
 stopwords = open("dummy/id.stopwords.02.01.2016.txt").read()
-insetLexicons = pd.read_csv("dummy/inset.lex/all-inset-lex.csv", header=0, lineterminator='\n').to_dict()
+insetLexicons = pd.read_csv("dummy/inset.lex/all-inset-lex.csv", header=0).set_index('word').to_dict()['weight']
 
 class BaseIO:
     datas = {
@@ -180,7 +180,11 @@ class PreProcessor(Processor):
     
     def classifyWord(self, word):
         try:
-            score = insetLexicons[word]
+            if word in insetLexicons:
+                score = insetLexicons[word]
+            else:
+                score = 0
+
             return int(score)
         except Exception as e:
             print(e)
@@ -189,19 +193,23 @@ class PreProcessor(Processor):
     def classifySentence(self, sentence):
         score = 0
         
-        try:
-            if isinstance(sentence, str):
-                sentence = self.splitToWords(sentence)
+        if isinstance(sentence, str):
+            sentence = self.splitToWords(sentence)
 
-            dic = {}
+        dic = {}
+        if isinstance(sentence, list):
             for word in sentence:
                 wscore = self.classifyWord(word)
                 score += wscore
                 dic[word] = wscore
+            
             return dic, score
-        except Exception as e:
-            print(e)
+        else:
             return {}, 0
+        # try:
+        # except Exception as e:
+        #     print(e)
+        #     return {}, 0
         
 
     def preproccess(self):
