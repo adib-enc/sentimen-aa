@@ -106,6 +106,29 @@ class Processor:
             if now % self.progressModer == 0:
                 print("progress", self.percentProgress(now, total),"%")
 
+    def getGlobalWords(self, typef = "df"):
+        if typef == "file":
+            r = open("dummy/globalWords",'r').read().split("\n")
+        elif typef == "df":
+            r = pd.read_csv("dummy/term.freq.9k.csv", header=0, lineterminator='\n')
+        elif typef == "df-docfreq":
+            r = pd.read_csv("dummy/term.docfreq.9k.csv", header=0, lineterminator='\n')
+
+        return r
+    
+    def getDataframe(self, typef = "df"):
+        r = None
+        if typef == "file":
+            r = None
+        elif typef == "sentimenY1-200MB":
+            r = pd.read_csv("dummy/sentimenY1result.csv", header=0, lineterminator='\n')
+        elif typef == "sentimenY1-sample":
+            r = pd.read_csv("dummy/sentimenY1result.10.csv", header=0, lineterminator='\n')
+        elif typef == "df-docfreq":
+            r = pd.read_csv("dummy/term.docfreq.9k.csv", header=0, lineterminator='\n')
+
+        return r
+
 class PreProcessor(Processor):
     name = "Preprocessor"
     results = {
@@ -351,16 +374,6 @@ class PreProcessor(Processor):
             fo.close()
 
         pass
-    
-    def getGlobalWords(self, typef = "df"):
-        if typef == "file":
-            r = open("dummy/globalWords",'r').read().split("\n")
-        elif typef == "df":
-            r = pd.read_csv("dummy/term.freq.9k.csv", header=0, lineterminator='\n')
-        elif typef == "df-docfreq":
-            r = pd.read_csv("dummy/term.docfreq.9k.csv", header=0, lineterminator='\n')
-
-        return r
 
     # global
     def termFrequency(self, terms):
@@ -468,6 +481,8 @@ class KMeansProcessor(Processor):
         super(KMeansProcessor, self).__init__(*args, **kwargs)
 
     def process(self):
+        df = self.getDataframe("sentimenY1-200MB")
+
         pass
 
 class SVMNBCProcessor(Processor):
@@ -538,7 +553,7 @@ def initialize():
 # preprocessor.classify()
 # preprocessor.formGlobalWords()
 # preprocessor.documentFrequency()
-preprocessor.tfidfWeighting()
+# preprocessor.tfidfWeighting()
 # pprint(preprocessor.termFrequency(["a","b","c","c","c"]))
 # pprint(preprocessor.termFrequency("aabbbcdefggg"))
 # pprint(preprocessor.termFrequency(preprocessor.getGlobalWords()))
