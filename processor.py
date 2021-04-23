@@ -3,6 +3,9 @@ import pandas as pd
 import numpy as np
 import string
 from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
+from collections import Counter
+from pprint import pprint
+import time
 """
 # create stemmer
 from pprint import pprint
@@ -85,6 +88,7 @@ class PreProcessor(Processor):
     wordsCache = {}
     progress = 0
     globalWords = []
+    progressModer = 1000
 
     # factory = StemmerFactory()
     # stemmer = factory.create_stemmer()
@@ -115,6 +119,20 @@ class PreProcessor(Processor):
 
         return tokenized
     
+    def progressor(self, arg):
+        typ = arg['type']
+        if typ == "start":
+            starttime = time.time()
+            print("total: ",arg['total'])
+            print("start: ",starttime)
+
+            return starttime
+        elif typ == "progress":
+            now = arg['now']
+            total = arg['total']
+            if now % self.progressModer == 0:
+                print("progress", self.percentProgress(now, total),"%")
+
     def printProgress(self):
         if self.progress % 100 == 0:
             pref = ["file", str(self.current['file']),"idx", str(self.current['index'])]
@@ -314,52 +332,109 @@ class PreProcessor(Processor):
             fo.close()
 
         pass
+    
+    def getGlobalWords(self, typef = "df"):
+        if typef == "file":
+            r = open("dummy/globalWords",'r').read().split("\n")
+        elif typef == "df":
+            r = pd.read_csv("dummy/term.freq.9k.csv", header=0, lineterminator='\n')
+        elif typef == "df-docfreq":
+            r = pd.read_csv("dummy/term.docfreq.9k.csv", header=0, lineterminator='\n')
+
+        return r
+
+    # global
+    def termFrequency(self, terms):
+
+        if isinstance(terms, str):
+            dic = dict(zip(list(terms),[list(terms).count(i) for i in list(terms)]))
+        else:
+            dic = dict(zip(terms,[terms.count(i) for i in terms]))
+
+        return dic
+
+    def percentProgress(self, now, total):
+        return (now / total) * 100
+
+    def documentFrequency(self):
+        filen = './dummy/classified/ruu.all.classified.csv'
+        print(filen)
+        dfClassified = pd.read_csv(filen, header=0, lineterminator='\n')
+        dfTerms = self.getGlobalWords(typef = "df")
+        preprocessed = dfClassified['preprocessed']
+
+        total = len(preprocessed) * len(dfTerms['words'])
+        docFreqs = []
+        now = 0
+        
+        for i, w in enumerate(dfTerms['words']):
+            DF = 0
+
+            for p in preprocessed:
+                if isinstance(p, str):
+                    psplit = p.split(" ")
+                    if w in psplit:
+                        DF += 1
+                    now += 1
+            
+            docFreqs.append(DF)
+        
+        dfTerms['docfreq'] = docFreqs
+        dfTerms.to_csv("dummy/term.docfreq.9k.csv")
 
     def tfidfWeighting(self):
-        print("classify::tfidfWeighting")
-
-        sentimenY1s = self.results['sentimen.y1']
-        keys = sentimenY1s.keys()
+        filen = './dummy/classified/ruu.all.classified.csv'
+        print(filen)
+        dfClassified = pd.read_csv(filen, header=0, lineterminator='\n')
+        dfTerms = self.getGlobalWords(typef = "df-docfreq")
+        dfWordKey = dfTerms.set_index('words').to_dict()
+        docFreq = dfWordKey['docfreq']
         
-        df = None
+        preprocessed = dfClassified['preprocessed']
+        
+        dfRet = None
+        N = 6103
+        # wordWeights = {}
 
-        for sentimenY1s in keys:
-            df = sentimenY1s[preprocessed]['dataframe']
-            dfpreprocessed = df['preprocessed']
+        total = len(preprocessed) * len(dfTerms['words'])
+        now = 0
+        
+        started = self.progressor({
+            'type': "start",
+            'total': total,
+            'now': now,
+        })
 
-            df['classify_data'] = 1 # default as positiv
-            df['classified'] = 'p' # default as positiv
-            self.dfpreprocessed = dfpreprocessed
-            self.current['file'] = preprocessed
-            classify_datas = []
-            classifieds = []
-            
-            for index, text in enumerate(self.dfpreprocessed):
-                print(preprocessed,"text::",index)
-                dic, score = self.classifySentence(text)
-                classify_datas.append(dic)
+        self.progressModer = 100000
 
-                if score > 0:
-                    classifieds.append('positive')
-                elif score == 0:
-                    classifieds.append('netral')
-                elif score < 0:
-                    classifieds.append('negative')
-                # print(self.classifySentence(sentence))
-                # break
-            
-            try:
-                df['classify_data'] = classify_datas
-                df['classified'] = classifieds
-                df.to_csv('./dummy/classified/' + preprocessed + ".classified.csv")
-            except Exception as e:
-                print(e)
-                print(classifieds)
-                pass
+        for word in dfTerms['words']:
+            wList = []
+            for p in preprocessed:
+                if isinstance(p, str):
+                    psplit = p.split(" ")
 
-        self.results["sentimen.y1"]['dataframe'] = df
+                    self.progressor({
+                        'type': "progress",
+                        'total': total,
+                        'now': now,
+                    })
 
-        self.results["tfidf"] = 1
+                    TF = psplit.count(word)
+                    W = 0
+                    
+                    if docFreq[word] > 0:
+                        IDF = np.log( N / docFreq[word] )
+                        W = TF * IDF
+
+                    wList.append(W)
+                else:
+                    wList.append(0)
+                now += 1
+                
+            dfClassified[word] = wList
+            # wordWeights[word] = wList
+        # self.results["tfidf"] = 1
+        dfClassified.to_csv("dummy/sentimenY1result.csv")
 
     def process(self):
         pass
@@ -426,9 +501,9 @@ def initialize():
     for c in crawled:
         # get classified
         filen = './dummy/classified/' + c['name'] + '.classified.csv'
-        print(filen)
-        c['dataframe'] = pd.read_csv(filen, header=0, lineterminator='\n')
-        preprocessor.results['sentimen.y1'][c['name']] = c
+        # print(filen)
+        # c['dataframe'] = pd.read_csv(filen, header=0, lineterminator='\n')
+        # preprocessor.results['sentimen.y1'][c['name']] = c
 
         # get preprocessed
         # filen = './dummy/preprocess/' + c['name'] + '.preprocessed.csv'
@@ -442,10 +517,16 @@ def initialize():
         # break
 
 
-initialize()
+# initialize()
 # preprocessor.preproccess()
 # preprocessor.classify()
 # preprocessor.formGlobalWords()
+# preprocessor.documentFrequency()
+preprocessor.tfidfWeighting()
+# pprint(preprocessor.termFrequency(["a","b","c","c","c"]))
+# pprint(preprocessor.termFrequency("aabbbcdefggg"))
+# pprint(preprocessor.termFrequency(preprocessor.getGlobalWords()))
+
 # search
 """
 df.loc[df['status_id'] == 'x1328208693461196803']
