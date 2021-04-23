@@ -48,6 +48,8 @@ class Processor:
     results = {}
     baseio = None
 
+    progressModer = 1000
+
     def __init__(self, name = "", params = {}):
         # self.name = name
         self.params = params
@@ -71,6 +73,38 @@ class Processor:
     def logs(self, text = ""):
         print(self.name + "::" + text)
         pass
+    
+    def percentProgress(self, now, total):
+        return (now / total) * 100
+    
+    """
+    sample
+
+    self.progressor({
+        'type': "start",
+        'total': total,
+        'now': now,
+    })
+
+    self.progressor({
+        'type': "progress",
+        'total': total,
+        'now': now,
+    })
+    """
+    def progressor(self, arg):
+        typ = arg['type']
+        if typ == "start":
+            starttime = time.time()
+            print("total: ",arg['total'])
+            print("start: ",starttime)
+
+            return starttime
+        elif typ == "progress":
+            now = arg['now']
+            total = arg['total']
+            if now % self.progressModer == 0:
+                print("progress", self.percentProgress(now, total),"%")
 
 class PreProcessor(Processor):
     name = "Preprocessor"
@@ -88,7 +122,6 @@ class PreProcessor(Processor):
     wordsCache = {}
     progress = 0
     globalWords = []
-    progressModer = 1000
 
     # factory = StemmerFactory()
     # stemmer = factory.create_stemmer()
@@ -118,20 +151,6 @@ class PreProcessor(Processor):
         tokenized = [t.strip().lower() for t in tokenized if t!="\r"]
 
         return tokenized
-    
-    def progressor(self, arg):
-        typ = arg['type']
-        if typ == "start":
-            starttime = time.time()
-            print("total: ",arg['total'])
-            print("start: ",starttime)
-
-            return starttime
-        elif typ == "progress":
-            now = arg['now']
-            total = arg['total']
-            if now % self.progressModer == 0:
-                print("progress", self.percentProgress(now, total),"%")
 
     def printProgress(self):
         if self.progress % 100 == 0:
@@ -352,9 +371,6 @@ class PreProcessor(Processor):
             dic = dict(zip(terms,[terms.count(i) for i in terms]))
 
         return dic
-
-    def percentProgress(self, now, total):
-        return (now / total) * 100
 
     def documentFrequency(self):
         filen = './dummy/classified/ruu.all.classified.csv'
