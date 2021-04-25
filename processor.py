@@ -1,5 +1,11 @@
 import re
-import pandas as pd
+import pandas as pd # normal pandas
+
+#modins
+# import modin.pandas as pd 
+# import ray
+# ray.init()
+
 import numpy as np
 import string
 from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
@@ -11,6 +17,20 @@ import time
 from pprint import pprint
 factory = StemmerFactory()
 stemmer = factory.create_stemmer()
+"""
+
+import matplotlib.pyplot as plt
+
+# sklearns
+from sklearn.cluster import KMeans
+from sklearn.naive_bayes import GaussianNB
+from sklearn import svm
+
+"""
+speed up training
+https://medium.com distributed-computing-with-ray/how-to-speed-up-scikit-learn-model-training-aaf17e2d1e1
+https://towardsdatascience.com pca-using-python-scikit-learn-e653f8989e60
+https://medium.com distributed-computing-with-ray/how-to-speed-up-pandas-with-modin-84aa6a87bcdb
 """
 
 # https://github.com/masdevid/ID-Stopwords
@@ -480,8 +500,42 @@ class KMeansProcessor(Processor):
     def __init__(self, *args, **kwargs):
         super(KMeansProcessor, self).__init__(*args, **kwargs)
 
+    """
+    # optimal number of clusters
+    X = np compatible dataset
+
+    """
+
+    def optimizeClusterN(self, X):
+        print("kmeans::optimizing..")
+        wcss = []
+        for i in range(1, 11):
+            print("wcss",i)
+            try:
+                kmeans = KMeans(n_clusters=i, init='k-means++', max_iter= 300, n_init= 10, random_state= 0)
+                kmeans.fit(X)
+                wcss.append(kmeans.inertia_)
+            except Exception as e:
+                print("error @ i=",i)
+
+        plt.plot(range(1, len(wcss)+1),wcss)
+        plt.title('The Elbow Method')
+        plt.xlabel('Number of clusters K')
+        plt.ylabel('Average Within-Cluster distance to Centroid (WCSS)')
+        plt.show()
+
+    """
+    https://stackabuse.com/k-means-clustering-with-scikit-learn/
+    """
     def process(self):
+        print("processing kmeans")
         df = self.getDataframe("sentimenY1-200MB")
+        df = df.drop(['Unnamed: 0', 'status_id', 'created_at', 'screen_name', 'text', 'preprocessed', 'classify_data'], axis=1)
+        npDf = df.to_numpy()
+
+        X = df.iloc[: , [1, df.shape[1]-1]].values
+
+        self.optimizeClusterN(X)
 
         pass
 
@@ -493,6 +547,16 @@ class SVMNBCProcessor(Processor):
 
     def __init__(self, *args, **kwargs):
         super(SVMNBCProcessor, self).__init__(*args, **kwargs)
+    
+    """
+    https://www.datacamp.com/community/tutorials/naive-bayes-scikit-learn
+    """
+
+    def doSVM(self):
+        pass
+    
+    def doNBC(self):
+        pass
 
     def process(self):
         pass
@@ -557,6 +621,8 @@ def initialize():
 # pprint(preprocessor.termFrequency(["a","b","c","c","c"]))
 # pprint(preprocessor.termFrequency("aabbbcdefggg"))
 # pprint(preprocessor.termFrequency(preprocessor.getGlobalWords()))
+
+pKmp.process()
 
 # search
 """
