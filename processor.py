@@ -142,6 +142,11 @@ class Processor:
             r = None
         elif typef == "sentimenY1-200MB":
             r = pd.read_csv("dummy/sentimenY1result.csv", header=0, lineterminator='\n')
+        elif typef == "sentimenY1-200MB-dfval":
+            pass
+            # r = pd.read_csv('dummy/sentimenY1result.csv', sep=',',header=0)
+            # r = df.values
+            # r = pd.read_csv("dummy/sentimenY1result.csv", header=0, lineterminator='\n')
         elif typef == "sentimenY1-sample":
             r = pd.read_csv("dummy/sentimenY1result.10.csv", header=0, lineterminator='\n')
         elif typef == "df-docfreq":
@@ -531,7 +536,8 @@ class KMeansProcessor(Processor):
         print("processing kmeans")
         df = self.getDataframe("sentimenY1-200MB")
         df = df.drop(['Unnamed: 0', 'status_id', 'created_at', 'screen_name', 'text', 'preprocessed', 'classify_data'], axis=1)
-        npDf = df.to_numpy()
+        # npDf = df.to_numpy()
+        npDf = df.values
 
         X = df.iloc[: , [1, df.shape[1]-1]].values
 
