@@ -109,7 +109,7 @@ class Processor:
         elif typef == "df8k":
             r = pd.read_csv("dummy/term.freq.8k.csv", header=0, lineterminator='\n')
         elif typef == "df-docfreq8k":
-            r = pd.read_csv("dummy/term.docfreq.8k.csv", header=0, lineterminator='\n')
+            r = pd.read_csv("dummy/w8k.term.docfreq.csv", header=0, lineterminator='\n')
 
         return r
     
@@ -119,6 +119,8 @@ class Processor:
             r = None
         elif typef == "sentimenY1-200MB":
             r = pd.read_csv("dummy/sentimenY1result.csv", header=0, lineterminator='\n')
+        elif typef == "sentimenY1-200MB-8k":
+            r = pd.read_csv("dummy/w8ksentimenY1result.csv", header=0, lineterminator='\n')
         elif typef == "sentimenY1-200MB-dfval":
             pass
             # r = pd.read_csv('dummy/sentimenY1result.csv', sep=',',header=0)

@@ -475,11 +475,14 @@ class PreProcessor(Processor):
         dfTerms['docfreq'] = docFreqs
         dfTerms.to_csv("dummy/"+alias+".term.docfreq.csv")
 
-    def tfidfWeighting(self):
-        filen = './dummy/classified/ruu.all.classified.csv'
-        print(filen)
-        dfClassified = pd.read_csv(filen, header=0, lineterminator='\n')
-        dfTerms = self.getGlobalWords(typef = "df-docfreq")
+    # filen = './dummy/classified/ruu.all.classified.csv'
+    # print(filen)
+    # dfClassified = pd.read_csv(filen, header=0, lineterminator='\n')
+    # dfTerms = self.getGlobalWords(typef = "df-docfreq")
+
+    def tfidfWeighting(self, dfClassified, dfTerms, alias = "tfidf1"):
+        print("tfidf weighting..")
+        time.sleep(1)
         dfWordKey = dfTerms.set_index('words').to_dict()
         docFreq = dfWordKey['docfreq']
         
@@ -527,7 +530,7 @@ class PreProcessor(Processor):
             dfClassified[word] = wList
             # wordWeights[word] = wList
         # self.results["tfidf"] = 1
-        dfClassified.to_csv("dummy/sentimenY1result.csv")
+        dfClassified.to_csv("dummy/"+alias+"sentimenY1result.csv")
 
     def process(self):
         pass

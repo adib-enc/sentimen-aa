@@ -75,8 +75,12 @@ class KMeansProcessor(Processor):
     """
     def process(self):
         print("processing kmeans")
-        df = self.getDataframe("sentimenY1-200MB")
-        df = df.drop(['Unnamed: 0', 'status_id', 'created_at', 'screen_name', 'text', 'preprocessed', 'classify_data'], axis=1)
+        df = self.getDataframe("sentimenY1-200MB-8k")
+        df = df.drop([
+            'Unnamed: 0', 
+            'Unnamed: 0.1', 
+            'Unnamed: 0.1.1', 
+            'status_id', 'created_at', 'screen_name', 'text', 'preprocessed', 'classify_data'], axis=1)
         # npDf = df.to_numpy()
         npDf = df.values
 
@@ -174,9 +178,15 @@ df = pd.read_csv(fn, header=0)
 # df = pd.read_csv(fn, header=0)
 # preprocessor.classify(df, "preprocessed", "reclean")
 # preprocessor.formGlobalWords(df, "reclean", toFile = True)
-fn = "dummy/classified/reclean.classified.csv"
-dfTerms = preprocessor.getGlobalWords(typef = "df8k")
-preprocessor.documentFrequency(df, dfTerms, "w8k")
+# fn = "dummy/classified/reclean.classified.csv"
+# dfTerms = preprocessor.getGlobalWords(typef = "df8k")
+# preprocessor.documentFrequency(df, dfTerms, "w8k")
+
+# dfTerms = preprocessor.getGlobalWords(typef = "df8k")
+# preprocessor.documentFrequency(df, dfTerms, "w8k")
+
+dfTerms = preprocessor.getGlobalWords(typef = "df-docfreq8k")
+preprocessor.tfidfWeighting(df, dfTerms, "w8k")
 # preprocessor.classify()
 # preprocessor.formGlobalWords()
 # preprocessor.documentFrequency()
