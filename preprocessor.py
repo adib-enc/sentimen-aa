@@ -57,7 +57,7 @@ class PreProcessor(Processor):
 
     def __init__(self, *args, **kwargs):
         super(PreProcessor, self).__init__(*args, **kwargs)
-        self.initStemmer().initData()
+        # self.initStemmer().initData()
 
     def initStemmer(self):
         factory = StemmerFactory()
@@ -334,11 +334,14 @@ class PreProcessor(Processor):
             classify_datas.append(dic)
 
             if score > 0:
-                classifieds.append('positive')
+                # classifieds.append('positive')
+                classifieds.append(1)
             elif score == 0:
-                classifieds.append('netral')
+                # classifieds.append('netral')
+                classifieds.append(0)
             elif score < 0:
-                classifieds.append('negative')
+                # classifieds.append('negative')
+                classifieds.append(-1)
             
             self.progressor({
                 'type': "progress",

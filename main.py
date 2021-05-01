@@ -33,6 +33,12 @@ https://towardsdatascience.com pca-using-python-scikit-learn-e653f8989e60
 https://medium.com distributed-computing-with-ray/how-to-speed-up-pandas-with-modin-84aa6a87bcdb
 """
 
+# save model
+"""
+# https://machinelearningmastery com/save-load-machine-learning-models-python-scikit-learn/
+"""
+import joblib
+
 from baseio import BaseIO
 from processor import Processor
 from preprocessor import PreProcessor
@@ -57,12 +63,12 @@ class KMeansProcessor(Processor):
         wcss = []
         for i in range(1, 11):
             print("wcss",i)
-            try:
-                kmeans = KMeans(n_clusters=i, init='k-means++', max_iter= 300, n_init= 10, random_state= 0)
-                kmeans.fit(X)
-                wcss.append(kmeans.inertia_)
-            except Exception as e:
-                print("error @ i=",i)
+            kmeans = KMeans(n_clusters=i, init='k-means++', max_iter= 300, n_init= 10, random_state= 0)
+            kmeans.fit(X)
+            wcss.append(kmeans.inertia_)
+            # try:
+            # except Exception as e:
+            #     print("error @ i=",i)
 
         plt.plot(range(1, len(wcss)+1),wcss)
         plt.title('The Elbow Method')
@@ -74,17 +80,24 @@ class KMeansProcessor(Processor):
     https://stackabuse.com/k-means-clustering-with-scikit-learn/
     """
     def process(self):
-        print("processing kmeans")
+        print("processing kmeans..")
         df = self.getDataframe("sentimenY1-200MB-8k")
         df = df.drop([
+            'no',
             'Unnamed: 0', 
             'Unnamed: 0.1', 
             'Unnamed: 0.1.1', 
+            'classified',
             'status_id', 'created_at', 'screen_name', 'text', 'preprocessed', 'classify_data'], axis=1)
+        # df = df.replace(
+        #     ['positive', 'negative', 'netral'],
+        #     [1, -1, 0])
+        
         # npDf = df.to_numpy()
         npDf = df.values
 
-        X = df.iloc[: , [1, df.shape[1]-1]].values
+        # X = df.iloc[: , [1, df.shape[1]-1]].values
+        X = df.values
 
         self.optimizeClusterN(X)
 
@@ -96,6 +109,11 @@ class SVMNBCProcessor(Processor):
         "sentimen.y2": None
     }
 
+    models = {
+        "nbc": None,
+        "svm": None,
+    }
+
     def __init__(self, *args, **kwargs):
         super(SVMNBCProcessor, self).__init__(*args, **kwargs)
     
@@ -103,11 +121,64 @@ class SVMNBCProcessor(Processor):
     https://www.datacamp.com/community/tutorials/naive-bayes-scikit-learn
     """
 
+    def getDF(self):
+        df = self.getDataframe("sentimenY1-200MB-8k")
+        df = df.drop([
+            'no',
+            'Unnamed: 0', 
+            'Unnamed: 0.1', 
+            'Unnamed: 0.1.1', 
+            'status_id', 'created_at', 'screen_name', 'text', 'preprocessed', 'classify_data'], axis=1)
+        df = df.replace(
+            ['positive', 'negative', 'netral'],
+            [1, -1, 0])
+        return df
+
     def doSVM(self):
+        print("SVM training ...")
+        df = self.getDF()
         pass
     
     def doNBC(self):
+        print("NBC training ...")
+        df = self.getDF()
+        # iloc[: , [2, df.shape[1]-1]]
+        print(df.values)
+
+        # return
+
+        features, label = (df.values, df['classified'])
+
+        model = GaussianNB()
+        # Train the model using the training sets
+        model = model.fit(features, label)
+        self.models['nbc'] = model
+
+
         pass
+
+    def interactivePredict(self):
+        print("init interactiv predict..")
+        while True:
+            banner = """
+Use model
+>1. NBC
+2. SVM
+>"""
+            inp = input(banner)
+            model = self.models['nbc']
+
+            inp = [int(i) for i in inp.split(" ")]
+
+            print("inputed> ",inp)
+                # predicted = model.predict([[0,2]]) # 0:Overcast, 2:Mild
+            predicted = model.predict([inp]) # 0:Overcast, 2:Mild
+            print("Predicted Value:", predicted)
+            try:
+                pass
+            except:
+                print("err")
+
 
     def process(self):
         pass
@@ -127,6 +198,7 @@ class RegresiLMProcessor(Processor):
 baseio = BaseIO()
 p = Processor()
 preprocessor = PreProcessor()
+# preprocessor = preprocessor.initStemmer().initData()
 pKmp = KMeansProcessor()
 pSvmnbc = SVMNBCProcessor()
 pRegresi = RegresiLMProcessor()
@@ -185,8 +257,8 @@ df = pd.read_csv(fn, header=0)
 # dfTerms = preprocessor.getGlobalWords(typef = "df8k")
 # preprocessor.documentFrequency(df, dfTerms, "w8k")
 
-dfTerms = preprocessor.getGlobalWords(typef = "df-docfreq8k")
-preprocessor.tfidfWeighting(df, dfTerms, "w8k")
+# dfTerms = preprocessor.getGlobalWords(typef = "df-docfreq8k")
+# preprocessor.tfidfWeighting(df, dfTerms, "w8k")
 # preprocessor.classify()
 # preprocessor.formGlobalWords()
 # preprocessor.documentFrequency()
@@ -196,6 +268,9 @@ preprocessor.tfidfWeighting(df, dfTerms, "w8k")
 # pprint(preprocessor.termFrequency(preprocessor.getGlobalWords()))
 
 # pKmp.process()
+
+pSvmnbc.doNBC()
+# pSvmnbc.interactivePredict()
 
 # search
 """

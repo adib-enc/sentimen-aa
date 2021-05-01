@@ -128,6 +128,8 @@ class Processor:
             # r = pd.read_csv("dummy/sentimenY1result.csv", header=0, lineterminator='\n')
         elif typef == "sentimenY1-sample":
             r = pd.read_csv("dummy/sentimenY1result.10.csv", header=0, lineterminator='\n')
+        elif typef == "sentimenY1-sample-30":
+            r = pd.read_csv("dummy/w8kY1.30.csv", header=0, lineterminator='\n')
         elif typef == "df-docfreq":
             r = pd.read_csv("dummy/term.docfreq.9k.csv", header=0, lineterminator='\n')
 
