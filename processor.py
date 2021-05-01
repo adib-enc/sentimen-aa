@@ -33,10 +33,6 @@ https://towardsdatascience.com pca-using-python-scikit-learn-e653f8989e60
 https://medium.com distributed-computing-with-ray/how-to-speed-up-pandas-with-modin-84aa6a87bcdb
 """
 
-# https://github.com/masdevid/ID-Stopwords
-stopwords = open("dummy/id.stopwords.02.01.2016.txt").read()
-insetLexicons = pd.read_csv("dummy/inset.lex/all-inset-lex.csv", header=0).set_index('word').to_dict()['weight']
-
 class BaseIO:
     datas = {
         "csv": None,
@@ -171,6 +167,9 @@ class PreProcessor(Processor):
     progress = 0
     globalWords = []
 
+    stopwords = None
+    insetLexicons = None
+
     # factory = StemmerFactory()
     # stemmer = factory.create_stemmer()
     stemmer = None
@@ -182,6 +181,11 @@ class PreProcessor(Processor):
     def initStemmer(self):
         factory = StemmerFactory()
         self.stemmer = factory.create_stemmer()
+    
+    def initData(self):
+        # https://github.com/masdevid/ID-Stopwords
+        self.stopwords = open("dummy/id.stopwords.02.01.2016.txt").read()
+        self.insetLexicons = pd.read_csv("dummy/inset.lex/all-inset-lex.csv", header=0).set_index('word').to_dict()['weight']
 
     def crawl(self):
         print("crawling")
@@ -217,6 +221,49 @@ class PreProcessor(Processor):
         return t
 
     """
+    yunus tweet cleaner
+    """
+    def remove_tweet_special(self, text):
+        # remove tab, new line, ans back slice
+        text = text.replace('\\t'," ").replace('\\n'," ").replace('\\u'," ").replace('\\',"")
+        # remove non ASCII (emoticon, chinese word, .etc)
+        text = text.encode('ascii', 'replace').decode('ascii')
+        # remove mention, link, hashtag
+        text = ' '.join(re.sub("([@#][A-Za-z0-9]+)|(\w+:\/\/\S+)"," ", text).split())
+        # remove incomplete URL
+        return text.replace("http://", " ").replace("https://", " ")
+
+    #remove number
+    def remove_number(self, text):
+        return  re.sub(r"\d+", "", text)
+
+    #remove punctuation
+    def remove_punctuation(self, text):
+        return text.translate(str.maketrans("","",string.punctuation))
+
+    #remove whitespace leading & trailing
+    def remove_whitespace_LT(self, text):
+        return text.strip()
+
+    #remove multiple whitespace into single whitespace
+    def remove_whitespace_multiple(self, text):
+        return re.sub('\s+',' ',text)
+    
+    def cleanTweet(self, text):
+        cleanTw = text
+
+        cleanTw = self.remove_tweet_special(cleanTw)
+        cleanTw = self.remove_number(cleanTw)
+        cleanTw = self.remove_punctuation(cleanTw)
+        cleanTw = self.remove_whitespace_LT(cleanTw)
+        cleanTw = self.remove_whitespace_multiple(cleanTw)
+
+        return cleanTw
+    """
+    ./yunus
+    """
+
+    """
         1 method 4 all
         # Tokenisasi
         # Data cleaning
@@ -225,18 +272,34 @@ class PreProcessor(Processor):
         # Stemming
     """
     def tokenizeAndClean(self, text, toWords = False):
+        detailDict = {}
+        print("init,",text)
+        detailDict['text'] = text
+        text = self.cleanTweet(text)
+        detailDict['cleaning'] = text
+        print("cleaning,",text)
+
         tokenized = re.sub("[\r\n]"," ", text)
+        stopwords = this.stopwords
         
         if toWords:
             tokenized = [e for e in re.split(r'(\W+)', tokenized) if ' ' not in e]
+            print("tokenized,",tokenized)
+            detailDict['tokenized'] = tokenized
             
             res = []
+
+            joined = " ".join(tokenized).lower()
+            print("folding,",joined)
+            detailDict['folding'] = joined
+            
             for t in tokenized:
                 if t == '':
                     # print(t)
                     continue
 
                 lowered = t.lower()
+                
 
                 if len(t) < 2:
                     continue
@@ -254,7 +317,8 @@ class PreProcessor(Processor):
                 self.progress += 1
                 self.current['index'] = self.progress
                 self.printProgress()
-
+            print("stopwordremov-stemmed,",res)
+            detailDict['stopwordremov-stemmed'] = res
             ret = res
             
         else:
@@ -262,10 +326,11 @@ class PreProcessor(Processor):
             tokenized = [t.strip().lower() for t in tokenized if t!="\r"]
             ret = tokenized
 
-        return ret
+        return ret, detailDict
     
     def classifyWord(self, word):
         try:
+            insetLexicons = self.insetLexicons
             if word in insetLexicons:
                 score = insetLexicons[word]
             else:
@@ -298,41 +363,95 @@ class PreProcessor(Processor):
         #     return {}, 0
         
 
-    def preproccess(self):
+    def preproccess(self, df, col="preprocessed", alias="preprocessed"):
+        print("preproccess")
+        dftext = df[col]
+        self.current['file'] = alias
+        df["preprocessed"] = 1
+        preprocesseds = []
+        self.dftext = dftext
+        
+        print(alias)
+        print("self.dftext length",len(self.dftext))
+        
+        preprocList = []
+
+        for index, text in enumerate(self.dftext):
+            print("text::",index)
+            preprocessed, detailDict = self.tokenizeAndClean(text, True)
+            if preprocessed != '':
+                preprocesseds.append(" ".join(preprocessed))
+            
+            preprocList.append(detailDict)
+
+            self.preprocesseds.append(preprocesseds)
+            # break
+        
+        # df = pd.DataFrame(preprocList)
+        # df.to_excel(crawled+"preproc.3.text.xls")
+
+        # break
+        try:
+            df['preprocessed'] = preprocesseds
+            df.to_csv('./dummy/preprocess/' + alias + ".preprocessed.csv")
+        except Exception as e:
+            print(e)
+            print(self.preprocesseds)
+            pass
+        
+        return df
+
+    def preproccessAll(self):
         print("preproccess")
 
         crawlResult = self.results['crawling']
         keys = self.results['crawling'].keys()
         for crawled in keys:
+            if crawled != "ruu.miras2":
+                continue
             df = crawlResult[crawled]['dataframe']
-            dftext = df['text']
-            self.current['file'] = crawled
-            df["preprocessed"] = 1
-            preprocesseds = []
-            self.dftext = dftext
-            
-            print(crawled)
-            print("self.dftext length",len(self.dftext))
-            for index, text in enumerate(self.dftext):
-                print("text::",index)
-                preprocessed = self.tokenizeAndClean(text, True)
-                if preprocessed != '':
-                    preprocesseds.append(" ".join(preprocessed))
-                
-                self.preprocesseds.append(preprocesseds)
-                # break
-            
-            try:
-                df['preprocessed'] = preprocesseds
-                df.to_csv('./dummy/preprocess/' + crawled + ".preprocessed.csv")
-            except Exception as e:
-                print(e)
-                print(self.preprocesseds)
-                pass
+            df = self.preproccess(df, "preprocessed", alias=crawled)
                 
             self.results['preprocess']['dataframe'] = df
     
-    def classify(self):
+    def classify(self, df, col="preprocessed", alias="classified"):
+        print("classify::inset lexicon")
+        dfpreprocessed = df[col]
+
+        df['classify_data'] = 1 # default as positiv
+        df['classified'] = 'p' # default as positiv
+        self.dfpreprocessed = dfpreprocessed
+        self.current['file'] = alias
+        classify_datas = []
+        classifieds = []
+        
+        for index, text in enumerate(self.dfpreprocessed):
+            dic, score = self.classifySentence(text)
+            classify_datas.append(dic)
+
+            if score > 0:
+                classifieds.append('positive')
+            elif score == 0:
+                classifieds.append('netral')
+            elif score < 0:
+                classifieds.append('negative')
+            # print(self.classifySentence(sentence))
+            # break
+            
+            try:
+                df['classify_data'] = classify_datas
+                df['classified'] = classifieds
+                df.to_csv('./dummy/classified/' + alias + ".classified.csv")
+            except Exception as e:
+                print(e)
+                print(classifieds)
+                pass
+
+        # bug, wrong file, not global result
+        # self.results["sentimen.y1"]['dataframe'] = df
+        return df
+
+    def classifyAll(self):
         print("classify::inset lexicon")
 
         preprocessResult = self.results['preprocess']
@@ -342,38 +461,9 @@ class PreProcessor(Processor):
 
         for preprocessed in keys:
             df = preprocessResult[preprocessed]['dataframe']
-            dfpreprocessed = df['preprocessed']
+            df = self.classify(df, col="preprocessed", alias=preprocessed)
 
-            df['classify_data'] = 1 # default as positiv
-            df['classified'] = 'p' # default as positiv
-            self.dfpreprocessed = dfpreprocessed
-            self.current['file'] = preprocessed
-            classify_datas = []
-            classifieds = []
-            
-            for index, text in enumerate(self.dfpreprocessed):
-                print(preprocessed,"text::",index)
-                dic, score = self.classifySentence(text)
-                classify_datas.append(dic)
-
-                if score > 0:
-                    classifieds.append('positive')
-                elif score == 0:
-                    classifieds.append('netral')
-                elif score < 0:
-                    classifieds.append('negative')
-                # print(self.classifySentence(sentence))
-                # break
-            
-            try:
-                df['classify_data'] = classify_datas
-                df['classified'] = classifieds
-                df.to_csv('./dummy/classified/' + preprocessed + ".classified.csv")
-            except Exception as e:
-                print(e)
-                print(classifieds)
-                pass
-
+        # bug, wrong file, not global result
         self.results["sentimen.y1"]['dataframe'] = df
     
     def formGlobalWords(self, toFile = True):
@@ -588,11 +678,11 @@ pRegresi = RegresiLMProcessor()
 
 def initialize():
     crawled = [
-        baseio.inputFmt("ruu.minol", 'ruu.minol.csv'),
-        baseio.inputFmt("ruu.minol2", 'ruu.minol2.csv'),
-        baseio.inputFmt("ruu.minuman.beralkohol", 'ruu.minuman.beralkohol.csv'),
-        baseio.inputFmt("ruu.minuman.beralkohol2", 'ruu.minuman.beralkohol2.csv'),
-        baseio.inputFmt("ruu.miras", 'ruu.miras.csv'),
+        # baseio.inputFmt("ruu.minol", 'ruu.minol.csv'),
+        # baseio.inputFmt("ruu.minol2", 'ruu.minol2.csv'),
+        # baseio.inputFmt("ruu.minuman.beralkohol", 'ruu.minuman.beralkohol.csv'),
+        # baseio.inputFmt("ruu.minuman.beralkohol2", 'ruu.minuman.beralkohol2.csv'),
+        # baseio.inputFmt("ruu.miras", 'ruu.miras.csv'),
         baseio.inputFmt("ruu.miras2", 'ruu.miras2.csv'),
     ]
 
@@ -601,7 +691,7 @@ def initialize():
     # print(crawled)
     for c in crawled:
         # get classified
-        filen = './dummy/classified/' + c['name'] + '.classified.csv'
+        # filen = './dummy/classified/' + c['name'] + '.classified.csv'
         # print(filen)
         # c['dataframe'] = pd.read_csv(filen, header=0, lineterminator='\n')
         # preprocessor.results['sentimen.y1'][c['name']] = c
@@ -613,13 +703,21 @@ def initialize():
 
         # print(pPre.results['crawling'])
         # get crawled
-        # c['dataframe'] = pd.read_csv('./dummy/'+c['filename'], header=0)
-        # preprocessor.results['crawling'][c['name']] = c
+        c['dataframe'] = pd.read_csv('./dummy/'+c['filename'], header=0)
+        preprocessor.results['crawling'][c['name']] = c
         # break
 
 
 # initialize()
 # preprocessor.preproccess()
+# df = pd.read_excel('dummypreproc.3.text.xls', header=0)
+# fn = "dummy/ruu.miras2.csv"
+# df = pd.read_csv(fn, header=0)
+# dfpreproc = preprocessor.preproccess(df, "text", "dummyPreproc")
+
+# fn = "dummy/preprocess/dummyPreproc.preprocessed.csv"
+# df = pd.read_csv(fn, header=0)
+# preprocessor.classify(df, "preprocessed", "dummyClassified")
 # preprocessor.classify()
 # preprocessor.formGlobalWords()
 # preprocessor.documentFrequency()
@@ -628,7 +726,7 @@ def initialize():
 # pprint(preprocessor.termFrequency("aabbbcdefggg"))
 # pprint(preprocessor.termFrequency(preprocessor.getGlobalWords()))
 
-pKmp.process()
+# pKmp.process()
 
 # search
 """
