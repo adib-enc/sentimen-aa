@@ -162,13 +162,21 @@ def initialize():
 # initialize()
 # preprocessor.preproccess()
 # df = pd.read_excel('dummypreproc.3.text.xls', header=0)
-fn = "dummy/ruu.miras2.csv"
+# fn = "dummy/ruu.miras2.csv"
+# fn = "dummy/classified/ruu.all.classified.csv"
+# fn = "dummy/preprocess/reclean.preprocessed.csv"
+fn = "dummy/classified/reclean.classified.csv"
 df = pd.read_csv(fn, header=0)
-dfpreproc = preprocessor.preproccess(df, "text", "dummyPreproc")
+# dummy/classified/ruu.all.classified.clean.csv
+# dfpreproc = preprocessor.preproccess(df, "text", "reclean")
 
 # fn = "dummy/preprocess/dummyPreproc.preprocessed.csv"
 # df = pd.read_csv(fn, header=0)
-# preprocessor.classify(df, "preprocessed", "dummyClassified")
+# preprocessor.classify(df, "preprocessed", "reclean")
+# preprocessor.formGlobalWords(df, "reclean", toFile = True)
+fn = "dummy/classified/reclean.classified.csv"
+dfTerms = preprocessor.getGlobalWords(typef = "df8k")
+preprocessor.documentFrequency(df, dfTerms, "w8k")
 # preprocessor.classify()
 # preprocessor.formGlobalWords()
 # preprocessor.documentFrequency()

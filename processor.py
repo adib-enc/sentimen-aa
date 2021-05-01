@@ -97,7 +97,7 @@ class Processor:
             now = arg['now']
             total = arg['total']
             if now % self.progressModer == 0:
-                print("progress", self.percentProgress(now, total),"%")
+                print("progress", self.percentProgress(now, total),"% @ {}".format(str(now)+"/"+str(total)))
 
     def getGlobalWords(self, typef = "df"):
         if typef == "file":
@@ -106,6 +106,10 @@ class Processor:
             r = pd.read_csv("dummy/term.freq.9k.csv", header=0, lineterminator='\n')
         elif typef == "df-docfreq":
             r = pd.read_csv("dummy/term.docfreq.9k.csv", header=0, lineterminator='\n')
+        elif typef == "df8k":
+            r = pd.read_csv("dummy/term.freq.8k.csv", header=0, lineterminator='\n')
+        elif typef == "df-docfreq8k":
+            r = pd.read_csv("dummy/term.docfreq.8k.csv", header=0, lineterminator='\n')
 
         return r
     

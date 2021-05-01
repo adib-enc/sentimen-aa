@@ -21,11 +21,6 @@ stemmer = factory.create_stemmer()
 
 import matplotlib.pyplot as plt
 
-# sklearns
-from sklearn.cluster import KMeans
-from sklearn.naive_bayes import GaussianNB
-from sklearn import svm
-
 """
 speed up training
 https://medium.com distributed-computing-with-ray/how-to-speed-up-scikit-learn-model-training-aaf17e2d1e1
@@ -256,10 +251,19 @@ class PreProcessor(Processor):
         preprocesseds = []
         self.dftext = dftext
         
+        total = len(self.dftext)
+        now = 0
         print(alias)
-        print("self.dftext length",len(self.dftext))
+        print("self.dftext length",total)
         
         preprocList = []
+
+        started = self.progressor({
+            'type': "start",
+            'total': total,
+            'now': now,
+        })
+        self.progressModer = 100
 
         for index, text in enumerate(self.dftext):
             print("text::",index)
@@ -267,9 +271,15 @@ class PreProcessor(Processor):
             if preprocessed != '':
                 preprocesseds.append(" ".join(preprocessed))
             
-            preprocList.append(detailDict)
+            self.progressor({
+                'type': "progress",
+                'total': total,
+                'now': now,
+            })
+            # preprocList.append(detailDict)
 
             self.preprocesseds.append(preprocesseds)
+            now += 1
             # break
         
         # df = pd.DataFrame(preprocList)
@@ -309,6 +319,15 @@ class PreProcessor(Processor):
         self.current['file'] = alias
         classify_datas = []
         classifieds = []
+
+        total = len(dfpreprocessed)
+        now = 0
+        
+        started = self.progressor({
+            'type': "start",
+            'total': total,
+            'now': now,
+        })
         
         for index, text in enumerate(self.dfpreprocessed):
             dic, score = self.classifySentence(text)
@@ -320,17 +339,24 @@ class PreProcessor(Processor):
                 classifieds.append('netral')
             elif score < 0:
                 classifieds.append('negative')
+            
+            self.progressor({
+                'type': "progress",
+                'total': total,
+                'now': now,
+            })
+            now += 1
             # print(self.classifySentence(sentence))
             # break
             
-            try:
-                df['classify_data'] = classify_datas
-                df['classified'] = classifieds
-                df.to_csv('./dummy/classified/' + alias + ".classified.csv")
-            except Exception as e:
-                print(e)
-                print(classifieds)
-                pass
+        try:
+            df['classify_data'] = classify_datas
+            df['classified'] = classifieds
+            df.to_csv('./dummy/classified/' + alias + ".classified.csv")
+        except Exception as e:
+            print(e)
+            print(classifieds)
+            pass
 
         # bug, wrong file, not global result
         # self.results["sentimen.y1"]['dataframe'] = df
@@ -351,7 +377,29 @@ class PreProcessor(Processor):
         # bug, wrong file, not global result
         self.results["sentimen.y1"]['dataframe'] = df
     
-    def formGlobalWords(self, toFile = True):
+    def formGlobalWords(self, df, alias = "reclean", toFile = True):
+        print("forming global words..")
+        dfpreprocessed = df['preprocessed']
+        # self.dfpreprocessed = dfpreprocessed
+        alias = str(alias)
+        
+        for index, text in enumerate(dfpreprocessed):
+            print(alias,"text::",index)
+            
+            if isinstance(text, str):
+                arr = text.split(' ')
+                for w in arr:
+                    self.globalWords.append(w)
+        
+        if toFile:
+            fo = open("dummy/"+alias+"globalWords",'w')
+            gw = map(lambda x:x+'\n', self.globalWords)
+            fo.writelines(gw)
+            fo.close()
+
+        pass
+
+    def formGlobalWordsAll(self, toFile = True):
         sentimenY1sResult = self.results['sentimen.y1']
         keys = sentimenY1sResult.keys()
 
@@ -385,16 +433,26 @@ class PreProcessor(Processor):
 
         return dic
 
-    def documentFrequency(self):
-        filen = './dummy/classified/ruu.all.classified.csv'
-        print(filen)
-        dfClassified = pd.read_csv(filen, header=0, lineterminator='\n')
-        dfTerms = self.getGlobalWords(typef = "df")
+    # filen = './dummy/classified/ruu.all.classified.csv'
+    # print(filen)
+    # dfClassified = pd.read_csv(filen, header=0, lineterminator='\n')
+    # dfTerms = self.getGlobalWords(typef = "df8k")
+
+    def documentFrequency(self, dfClassified, dfTerms, alias = "classified"):
+        print("forming doc freq")
+        time.sleep(1)
         preprocessed = dfClassified['preprocessed']
 
         total = len(preprocessed) * len(dfTerms['words'])
         docFreqs = []
         now = 0
+        
+        started = self.progressor({
+            'type': "start",
+            'total': total,
+            'now': now,
+        })
+        self.progressModer = 100000
         
         for i, w in enumerate(dfTerms['words']):
             DF = 0
@@ -404,12 +462,18 @@ class PreProcessor(Processor):
                     psplit = p.split(" ")
                     if w in psplit:
                         DF += 1
+
+                    self.progressor({
+                        'type': "progress",
+                        'total': total,
+                        'now': now,
+                    })
                     now += 1
             
             docFreqs.append(DF)
         
         dfTerms['docfreq'] = docFreqs
-        dfTerms.to_csv("dummy/term.docfreq.9k.csv")
+        dfTerms.to_csv("dummy/"+alias+".term.docfreq.csv")
 
     def tfidfWeighting(self):
         filen = './dummy/classified/ruu.all.classified.csv'
