@@ -26,6 +26,13 @@ from sklearn.cluster import KMeans
 from sklearn.naive_bayes import GaussianNB
 from sklearn import svm
 
+from sklearn.model_selection import train_test_split
+
+# validation modules
+# Import scikit-learn metrics module for accuracy calculation
+from sklearn import metrics
+from sklearn.metrics import confusion_matrix
+
 """
 speed up training
 https://medium.com distributed-computing-with-ray/how-to-speed-up-scikit-learn-model-training-aaf17e2d1e1
@@ -134,10 +141,32 @@ class SVMNBCProcessor(Processor):
             [1, -1, 0])
         return df
 
-    def doSVM(self):
-        print("SVM training ...")
+    def getDataWithTest(self, df, label):
+        # Split dataset into training set and test set
+        # 70% training and 30% test
+        # dfin = df.reindex(df.columns)
+        X_train, X_test, y_train, y_test = train_test_split(df, df[label], test_size=0.3,random_state=109)
+
+        return X_train, X_test, y_train, y_test
+
+    """
+    kernel = ['linear', 'poly', 'rbf']
+    """
+    def doSVM(self, kernel="linear"):
+        print("SVM::{}::training ...".format(kernel))
         df = self.getDF()
-        pass
+
+        print(df.values)
+
+        # features, label = (df.values, df['classified'])
+        X_train, X_test, y_train, y_test = self.getDataWithTest(df, 'classified')
+        features, label = (X_train, y_train)
+
+        model = svm.SVC(kernel=kernel)
+        model = model.fit(features, label)
+        self.models['svm'] = model
+
+        return model, X_train, X_test, y_train, y_test
     
     def doNBC(self):
         print("NBC training ...")
@@ -145,17 +174,53 @@ class SVMNBCProcessor(Processor):
         # iloc[: , [2, df.shape[1]-1]]
         print(df.values)
 
-        # return
-
-        features, label = (df.values, df['classified'])
+        # features, label = (df.values, df['classified'])
+        X_train, X_test, y_train, y_test = self.getDataWithTest(df, 'classified')
+        features, label = (X_train, y_train)
 
         model = GaussianNB()
-        # Train the model using the training sets
         model = model.fit(features, label)
         self.models['nbc'] = model
 
+        return model, X_train, X_test, y_train, y_test
+    
+    def getConfussionMatrix(self, y_true, y_pred, labels = "a"):
+        # , labels=labels
+        return confusion_matrix(y_true, y_pred)
 
-        pass
+    def doTestModel(self, model, X_test, y_test, alias = "nbc"):
+        print("Testing::{}".format(alias),"...")
+        #Predict the response for test dataset
+        y_pred = model.predict(X_test)
+        y_true = y_test
+
+        mirecall = metrics.recall_score(y_true, y_pred, average='micro')
+        miprecision = metrics.precision_score(y_true, y_pred, average='micro')
+        accuracy = metrics.accuracy_score(y_test, y_pred)
+        # f1_micro = metrics.f1_score
+
+        marecall = metrics.recall_score(y_true, y_pred, average='macro')
+        maprecision = metrics.precision_score(y_true, y_pred, average='macro')
+        # maaccuracy = metrics.accuracy_score(y_test, y_pred)
+
+        rpaMic = {
+            "recall": mirecall,
+            "precision": miprecision,
+            "accuracy": accuracy,
+            "confMatrix": self.getConfussionMatrix(y_true, y_pred, labels = "a"),
+        }
+        # Model Accuracy, how often is the classifier correct?
+        print("RPA micro:",rpaMic)
+
+        rpaMac = {
+            "recall": marecall,
+            "precision": maprecision,
+            "accuracy": accuracy,
+            "confMatrix": self.getConfussionMatrix(y_true, y_pred, labels = "a"),
+        }
+        print("RPA macro:",rpaMac)
+
+        return y_pred, rpaMic, rpaMac
 
     def interactivePredict(self):
         print("init interactiv predict..")
@@ -242,7 +307,7 @@ def initialize():
 # fn = "dummy/classified/ruu.all.classified.csv"
 # fn = "dummy/preprocess/reclean.preprocessed.csv"
 fn = "dummy/classified/reclean.classified.csv"
-df = pd.read_csv(fn, header=0)
+# df = pd.read_csv(fn, header=0)
 # dummy/classified/ruu.all.classified.clean.csv
 # dfpreproc = preprocessor.preproccess(df, "text", "reclean")
 
@@ -269,7 +334,10 @@ df = pd.read_csv(fn, header=0)
 
 # pKmp.process()
 
-pSvmnbc.doNBC()
+# model, X_train, X_test, y_train, y_test = pSvmnbc.doNBC()
+# y_pred = pSvmnbc.doTestModel(model, X_test, y_test)
+# model, X_train, X_test, y_train, y_test = pSvmnbc.doSVM('poly')
+# y_pred = pSvmnbc.doTestModel(model, X_test, y_test, "SVM::" + model.kernel)
 # pSvmnbc.interactivePredict()
 
 # search
