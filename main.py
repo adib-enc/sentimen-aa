@@ -257,6 +257,42 @@ class RegresiLMProcessor(Processor):
     def __init__(self, *args, **kwargs):
         super(RegresiLMProcessor, self).__init__(*args, **kwargs)
 
+    """
+    jml retweet
+    hashtag
+    keyword
+    jml follower
+    jml following
+    jml likes
+    jml kata @tweet
+    status verifikasi
+    cluster
+    source / perangkat
+
+    need proc:
+    hashtag
+    keyword
+    jml kata @tweet
+    status verifikasi
+    cluster
+    source / perangkat
+
+    https://www.delftstack com/howto/python-pandas/pandas-replace-values-in-column/
+    """
+    def buildVariabelPrediktor(self, df):
+        print("buildVariabelPrediktor")
+        
+        df.loc[df.hashtag == '','hashtag_vp'] = 0
+        df.loc[df.hashtag is not '','hashtag_vp'] = 1
+
+        df
+
+        pass
+
+    def mergeWithKeyword(self):
+        pass
+        #keyword
+
     def process(self):
         pass
 
