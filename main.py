@@ -270,24 +270,22 @@ class RegresiLMProcessor(Processor):
     source / perangkat
 
     need proc:
-    hashtag
-    keyword
-    jml kata @tweet
+    hashtag .
+    keyword .
+    jml kata @tweet 
     status verifikasi
     cluster
     source / perangkat
 
     https://www.delftstack com/howto/python-pandas/pandas-replace-values-in-column/
     """
-    def buildVariabelPrediktor(self, df):
+    def buildVariabelPrediktor(self):
         print("buildVariabelPrediktor")
-        
-        df.loc[df.hashtag == '','hashtag_vp'] = 0
-        df.loc[df.hashtag is not '','hashtag_vp'] = 1
-
-        df
-
-        pass
+        dfs = self.getDataframe("df-partial")
+        df = self.concatDataframeRows(dfs)
+        df.to_csv("dummy/_dummylinear.csv")
+        print("built")
+        return df
 
     def mergeWithKeyword(self):
         pass
@@ -376,6 +374,13 @@ fn = "dummy/classified/reclean.classified.csv"
 # y_pred = pSvmnbc.doTestModel(model, X_test, y_test, "SVM::" + model.kernel)
 # pSvmnbc.interactivePredict()
 
+df = pRegresi.buildVariabelPrediktor()
+
+df = pd.read_csv("dummy/_dummylinear.csv")
+# df.source.replace()
+print(df['hashtags'].unique())
+# print(df['hashtags_vp'].unique())
+print(df['source'].unique())
 # search
 """
 df.loc[df['status_id'] == 'x1328208693461196803']

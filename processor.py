@@ -99,6 +99,9 @@ class Processor:
             if now % self.progressModer == 0:
                 print("progress", self.percentProgress(now, total),"% @ {}".format(str(now)+"/"+str(total)))
 
+    def concatDataframeRows(self, dataframes):
+        return pd.concat(dataframes, axis=0, join='outer')
+
     def getGlobalWords(self, typef = "df"):
         if typef == "file":
             r = open("dummy/globalWords",'r').read().split("\n")
@@ -113,10 +116,21 @@ class Processor:
 
         return r
     
+    def filterDataframe(self, df, typef = "df"):
+        retdf = None
+        if typef == "liner-regress":
+            df.loc[df.hashtag == '','hashtag_vp'] = 0
+            df.loc[df.hashtag != '','hashtag_vp'] = 1
+            retdf = df
+
+        return retdf
+
     def getDataframe(self, typef = "df"):
         r = None
         if typef == "file":
             r = None
+        elif typef == "classified-filtered":
+            r = pd.read_csv("dummy/sentimenY1result.csv", header=0, lineterminator='\n')
         elif typef == "sentimenY1-200MB":
             r = pd.read_csv("dummy/sentimenY1result.csv", header=0, lineterminator='\n')
         elif typef == "sentimenY1-200MB-8k":
@@ -132,5 +146,86 @@ class Processor:
             r = pd.read_csv("dummy/w8kY1.30.csv", header=0, lineterminator='\n')
         elif typef == "df-docfreq":
             r = pd.read_csv("dummy/term.docfreq.9k.csv", header=0, lineterminator='\n')
+        elif typef == "df-partial":
+            baseio = self.baseio
+            crawled = [
+                baseio.inputFmt("ruu.minol", 'ruu.minol.csv'),
+                baseio.inputFmt("ruu.minol2", 'ruu.minol2.csv'),
+                baseio.inputFmt("ruu.minuman.beralkohol", 'ruu.minuman.beralkohol.csv'),
+                baseio.inputFmt("ruu.minuman.beralkohol2", 'ruu.minuman.beralkohol2.csv'),
+                baseio.inputFmt("ruu.miras", 'ruu.miras.csv'),
+                baseio.inputFmt("ruu.miras2", 'ruu.miras2.csv'),
+            ]
+            catReplace = {
+                "ruu.minol": 0,
+                "ruu.minol2": 0,
+                "ruu.minuman.beralkohol": 2,
+                "ruu.minuman.beralkohol2": 2,
+                "ruu.miras": 1,
+                "ruu.miras2": 1,
+            }
+            useCols = [
+                'text',
+                'hashtags',
+                'followers_count',
+                'friends_count',
+                'favourites_count',
+                'verified',
+                'source', #src device
+            ]
+            
+            dfs = []
+            for c in crawled:
+                print("ok",c)
+                df = pd.read_csv('./dummy/'+c['filename'], header=0, usecols=useCols)
+                # df['hashtags_vp'] = 0
+                print(df.head())
+                
+                print("====")
+                df.hashtags = df.hashtags.replace(regex={r'.*': 1, '': 0})
+                df.hashtags = df.hashtags.replace({'nan':0})
+                
+                # replace source
+                devReplace = {
+                    'Twitter for iPhone': 0, 
+                    'Twitter for Android': 1, 
+                    'Twitter Web App': 2, 
+                }
+                verifiedReplace = {
+                    True: 1,
+                    False: 0,
+                }
+                srcUniq = list(df.source.unique())
+                
+                try:
+                    srcUniq.remove('Twitter for iPhone')
+                    srcUniq.remove('Twitter for Android')
+                    srcUniq.remove('Twitter Web App')
+                except:
+                    pass
+                
+                for sr in srcUniq:
+                    df.source = df.source.replace(sr, 3)
+                
+                df.source = df.source.replace(devReplace)
+                df.verified = df.verified.replace(verifiedReplace)
+
+                df.fillna(value=0, inplace=True)
+                # print(df.source.unique())
+                # print("hashtg")
+                
+                df['classified'] = ''
+                df['keyword'] = catReplace[c['name']]
+                
+                df.replace(to_replace=[r'\s+'], value=[""], regex=True)
+                df.replace(to_replace=[r"\\t|\\n|\\r", "\t|\n|\r"], value=["",""], regex=True)
+                # df.replace("gt", " / ")
+                df.replace('\\t'," ").replace('\\n'," ").replace('\\u'," ").replace('\\',"")
+                df.text.str.translate(str.maketrans("","",string.punctuation))
+                df.text.str.strip()
+                print(df['hashtags'].unique())
+                #word count
+                dfs.append(df)
+            r = dfs
 
         return r
