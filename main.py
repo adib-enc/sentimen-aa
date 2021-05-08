@@ -27,6 +27,8 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn import svm
 
 from sklearn.model_selection import train_test_split
+from sklearn.model_selection import KFold
+from sklearn.model_selection import StratifiedShuffleSplit
 
 # validation modules
 # Import scikit-learn metrics module for accuracy calculation
@@ -101,7 +103,7 @@ class KMeansProcessor(Processor):
         #     [1, -1, 0])
         
         # npDf = df.to_numpy()
-        npDf = df.values
+        # npDf = df.values
 
         # X = df.iloc[: , [1, df.shape[1]-1]].values
         X = df.values
@@ -126,6 +128,13 @@ class SVMNBCProcessor(Processor):
         "svm": None,
     }
 
+    trainTestPairs = ()
+    dfProccess = None
+
+    CRange = [1e-2, 1, 1e2]
+    gammaRange = [1e-1, 1, 1e1]
+
+
     def __init__(self, *args, **kwargs):
         super(SVMNBCProcessor, self).__init__(*args, **kwargs)
     
@@ -134,6 +143,7 @@ class SVMNBCProcessor(Processor):
     """
 
     def getDF(self):
+        print("get 200 MB csv")
         df = self.getDataframe("sentimenY1-200MB-8k")
         df = df.drop([
             'no',
@@ -155,23 +165,85 @@ class SVMNBCProcessor(Processor):
         return X_train, X_test, y_train, y_test
 
     """
+    train:test
+    90:10
+
+    https://scikit-learn org/stable/modules/generated/sklearn.model_selection.KFold.html
+    https://scikit-learn org/stable/modules/generated/sklearn.model_selection.StratifiedShuffleSplit.html
+
+    X_train, X_test, y_train, y_test = self.doKFold(df.values, df['classified'], nsplits=5)
+    """
+    def doKFold(self, feature, label, nsplits=5):
+        print("10fold")
+        
+        X, y = (feature, label)
+        
+        X_train, X_test, y_train, y_test = (None,None,None,None,)
+
+        # kf = KFold(n_splits=nsplits)
+        kf = StratifiedShuffleSplit(n_splits=nsplits, test_size=0.1)
+        kf.get_n_splits(X)
+
+        for train_index, test_index in kf.split(X, y):
+            print("TRAIN:", train_index, "TEST:", test_index)
+            X_train, X_test = X[train_index], X[test_index]
+            y_train, y_test = y[train_index], y[test_index]
+        
+        return X_train, X_test, y_train, y_test
+
+    def procKFold(self, df, label):
+        print("proc do kfold")
+        features, label = (df, label)
+        X_train, X_test, y_train, y_test = self.doKFold(features, label)
+
+        return X_train, X_test, y_train, y_test
+    
+    """
     kernel = ['linear', 'poly', 'rbf']
+
+    # print(df.values)
+
+    # features, label = (df.values, df['classified'])
+    # ,,,, = self.getDataWithTest(df, 'classified')
+
+    # use kfold crossval
+    # X_train, X_test, y_train, y_test = self.doKFold(df.values, df['classified'], nsplits=5)
     """
     def doSVM(self, kernel="linear"):
         print("SVM::{}::training ...".format(kernel))
-        df = self.getDF()
 
-        print(df.values)
+        # if self.dfProccess == None:
+        #     raise Exception("df proc still none")
+        
+        df = self.dfProccess
 
-        # features, label = (df.values, df['classified'])
-        X_train, X_test, y_train, y_test = self.getDataWithTest(df, 'classified')
+        if self.trainTestPairs == ():
+            raise Exception("trainTestPairs empty")
+
+        X_train, X_test, y_train, y_test = self.trainTestPairs
         features, label = (X_train, y_train)
 
+        allowed = ['linear', 'poly', 'rbf']
+        
+        if kernel not in allowed:
+            raise Exception("illegal kernel")
+
+        model = svm.SVC(kernel=kernel, C=self.CRange, gamma=self.gammaRange)
+        
+        # C = []
+        """
+        rbf
         model = svm.SVC(kernel=kernel)
+        # C = []
+        """
         model = model.fit(features, label)
         self.models['svm'] = model
+        # model.classes_
 
         return model, X_train, X_test, y_train, y_test
+    
+    def doSVMRBF(self):
+        return self.doSVM("rbf")
     
     def doNBC(self):
         print("NBC training ...")
@@ -389,17 +461,41 @@ fn = "dummy/classified/reclean.classified.csv"
 
 # model, X_train, X_test, y_train, y_test = pSvmnbc.doNBC()
 # y_pred = pSvmnbc.doTestModel(model, X_test, y_test)
-# model, X_train, X_test, y_train, y_test = pSvmnbc.doSVM('poly')
+
+
+###### svm
+
+# loading
+df = pSvmnbc.getDF()
+pSvmnbc.dfProccess = df
+pSvmnbc.trainTestPairs = pSvmnbc.doKFold(df.values, df['classified'], nsplits=5)
+
+# linear kernel
+pSvmnbc.CRange = [10e-2, 10e-1, 1, 10e1, 10e2, 10e3, 10e4]
+model, X_train, X_test, y_train, y_test = pSvmnbc.doSVM()
+
+# rbf, convent : Crange use same Crange, gammarange use Crange
+pSvmnbc.gammaRange = pSvmnbc.CRange
+model, X_train, X_test, y_train, y_test = pSvmnbc.doSVMRBF()
+
+###### svm
+
 # y_pred = pSvmnbc.doTestModel(model, X_test, y_test, "SVM::" + model.kernel)
 # pSvmnbc.interactivePredict()
 
+# pSvmnbc = SVMNBCProcessor()
+
+# df = pSvmnbc.getDF()
+# X_train, X_test, y_train, y_test = pSvmnbc.procKFold(df.values, df['classified'])
+# print((X_train, X_test, y_train, y_test))
+
 # print(type(pRegresi.getWordCnt))
-df = pRegresi.buildVariabelPrediktor()
-pRegresi.mergeVPwithKmean(df)
+# df = pRegresi.buildVariabelPrediktor()
+# pRegresi.mergeVPwithKmean(df)
 
 # df = pd.read_csv("dummy/_dummylinear.csv")
 # df.source.replace()
-# print(df['hashtags'].unique())
+# print(df['kmean_label'].unique())
 # print(df['hashtags_vp'].unique())
 # print(df['source'].unique())
 # search
