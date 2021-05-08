@@ -125,6 +125,16 @@ class Processor:
 
         return retdf
 
+    def getWordCnt(self, sentc):
+        cnt = 0
+        
+        if isinstance(sentc,str):
+            sentc = sentc.split(" ")
+        
+        cnt = len(sentc)
+
+        return cnt
+
     def getDataframe(self, typef = "df"):
         r = None
         if typef == "file":
@@ -133,6 +143,9 @@ class Processor:
             r = pd.read_csv("dummy/sentimenY1result.csv", header=0, lineterminator='\n')
         elif typef == "sentimenY1-200MB":
             r = pd.read_csv("dummy/sentimenY1result.csv", header=0, lineterminator='\n')
+        elif typef == "sentimenY1-200MB-8k-kmean":
+            useCols = ['kmean_label']
+            r = pd.read_csv("dummy/sentimenY1-200MB-8k-kmeansd.csv", header=0, lineterminator='\n',usecols=useCols)
         elif typef == "sentimenY1-200MB-8k":
             r = pd.read_csv("dummy/w8ksentimenY1result.csv", header=0, lineterminator='\n')
         elif typef == "sentimenY1-200MB-dfval":
@@ -214,6 +227,7 @@ class Processor:
                 # print(df.source.unique())
                 # print("hashtg")
                 
+                df['word_count'] = df['text'].apply(self.getWordCnt)
                 df['classified'] = ''
                 df['keyword'] = catReplace[c['name']]
                 

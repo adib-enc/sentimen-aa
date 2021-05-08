@@ -106,7 +106,12 @@ class KMeansProcessor(Processor):
         # X = df.iloc[: , [1, df.shape[1]-1]].values
         X = df.values
 
-        self.optimizeClusterN(X)
+        # self.optimizeClusterN(X)
+        i = 3
+        kmeans = KMeans(n_clusters=i, init='k-means++', max_iter= 300, n_init= 10, random_state= 0)
+        kmeans.fit(X)
+        df['kmean_label'] = kmeans.labels_
+        df.to_csv("dummy/sentimenY1-200MB-8k-kmeansd.csv")
 
         pass
 
@@ -287,6 +292,19 @@ class RegresiLMProcessor(Processor):
         print("built")
         return df
 
+    def mergeVPwithKmean(self, dfL = None):
+        print("merging...")
+        df = self.getDataframe("sentimenY1-200MB-8k-kmean")
+        
+        if dfL is None:
+            dfL = pd.read_csv("dummy/_dummylinear.csv")
+            
+        dfL['kmean_label'] = df['kmean_label']
+        dfL.to_csv("dummy/_dummylinear.csv")
+        print(dfL['word_count'])
+
+        return dfL
+
     def mergeWithKeyword(self):
         pass
         #keyword
@@ -368,19 +386,22 @@ fn = "dummy/classified/reclean.classified.csv"
 
 # pKmp.process()
 
+
 # model, X_train, X_test, y_train, y_test = pSvmnbc.doNBC()
 # y_pred = pSvmnbc.doTestModel(model, X_test, y_test)
 # model, X_train, X_test, y_train, y_test = pSvmnbc.doSVM('poly')
 # y_pred = pSvmnbc.doTestModel(model, X_test, y_test, "SVM::" + model.kernel)
 # pSvmnbc.interactivePredict()
 
+# print(type(pRegresi.getWordCnt))
 df = pRegresi.buildVariabelPrediktor()
+pRegresi.mergeVPwithKmean(df)
 
-df = pd.read_csv("dummy/_dummylinear.csv")
+# df = pd.read_csv("dummy/_dummylinear.csv")
 # df.source.replace()
-print(df['hashtags'].unique())
+# print(df['hashtags'].unique())
 # print(df['hashtags_vp'].unique())
-print(df['source'].unique())
+# print(df['source'].unique())
 # search
 """
 df.loc[df['status_id'] == 'x1328208693461196803']
