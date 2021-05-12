@@ -25,15 +25,19 @@ import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
 from sklearn.naive_bayes import GaussianNB
 from sklearn import svm
+from sklearn.svm import LinearSVC, SVC
 
 from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import KFold
 from sklearn.model_selection import StratifiedShuffleSplit
+from sklearn.model_selection import StratifiedKFold
 
 # validation modules
 # Import scikit-learn metrics module for accuracy calculation
 from sklearn import metrics
 from sklearn.metrics import confusion_matrix
+from sklearn.metrics import classification_report
 
 """
 speed up training
@@ -131,8 +135,22 @@ class SVMNBCProcessor(Processor):
     trainTestPairs = ()
     dfProccess = None
 
+    C = 1
     CRange = [1e-2, 1, 1e2]
+    gamma = 1
     gammaRange = [1e-1, 1, 1e1]
+
+    tuned_parameters = [
+        {
+            'kernel':['linear'], 
+            'C':[0.01, 0.1, 1, 10, 100, 1000, 10000]
+        }, 
+        {
+            'kernel':['rbf'],
+            'C':[0.01, 0.1, 1, 10, 100, 1000, 10000],
+            'gamma':[1000, 100, 10, 1, 0.1, 0.01, 0.001]
+        }
+    ]
 
 
     def __init__(self, *args, **kwargs):
@@ -156,11 +174,11 @@ class SVMNBCProcessor(Processor):
             [1, -1, 0])
         return df
 
-    def getDataWithTest(self, df, label):
+    def getDataWithTest(self, df, label, test_size=0.1):
         # Split dataset into training set and test set
         # 70% training and 30% test
         # dfin = df.reindex(df.columns)
-        X_train, X_test, y_train, y_test = train_test_split(df, df[label], test_size=0.3,random_state=109)
+        X_train, X_test, y_train, y_test = train_test_split(df, df[label], test_size=test_size,random_state=109)
 
         return X_train, X_test, y_train, y_test
 
@@ -211,39 +229,94 @@ class SVMNBCProcessor(Processor):
     """
     def doSVM(self, kernel="linear"):
         print("SVM::{}::training ...".format(kernel))
-
-        # if self.dfProccess == None:
-        #     raise Exception("df proc still none")
-        
+        print("C:",self.C,"gamma:",self.gamma)
+        # df = self.getDF()
         df = self.dfProccess
 
-        if self.trainTestPairs == ():
-            raise Exception("trainTestPairs empty")
+        print(df.values)
 
+        # features, label = (df.values, df['classified'])
+        # X_train, X_test, y_train, y_test = self.getDataWithTest(df, 'classified')
         X_train, X_test, y_train, y_test = self.trainTestPairs
         features, label = (X_train, y_train)
 
-        allowed = ['linear', 'poly', 'rbf']
-        
-        if kernel not in allowed:
-            raise Exception("illegal kernel")
+        model = None
+        if kernel == "linear":
+            model = svm.SVC(kernel=kernel, C=self.C)
+        elif kernel == "rbf":
+            model = svm.SVC(kernel=kernel, C=self.C, gamma=self.gamma)
 
-        model = svm.SVC(kernel=kernel, C=self.CRange, gamma=self.gammaRange)
-        
-        # C = []
-        """
-        rbf
-        model = svm.SVC(kernel=kernel)
-        # C = []
-        """
         model = model.fit(features, label)
         self.models['svm'] = model
-        # model.classes_
 
         return model, X_train, X_test, y_train, y_test
     
     def doSVMRBF(self):
         return self.doSVM("rbf")
+
+    def doFullSVM(self, df):
+        print("do full svm")
+        # df = self.getDF()
+        self.dfProccess = df
+        self.trainTestPairs = self.doKFold(df.values, df['classified'], nsplits=5)
+
+        # linear kernel
+        svmResults = []
+        svmCs = [10e-2, 10e-1, 1, 10e1, 10e2, 10e3, 10e4]
+        print("svmCs",svmCs)
+        self.CRange = svmCs
+        self.gammaRange = svmCs
+
+        for C in svmCs:
+            for gamma in svmCs:
+                self.C = C
+                model, X_train, X_test, y_train, y_test = self.doSVM()
+                # rbf, convent : C use same C, gamma use same C
+                # pSvmnbc.gammaRange = pSvmnbc.CRange
+                pSvmnbc.gamma = gamma
+                model, X_train, X_test, y_train, y_test = pSvmnbc.doSVMRBF()
+
+                svmResults.append("todo: rpas")
+    
+    """
+    thx to PUTRI AYU @its
+    """
+    def doSVMwithGridSearch(self, df = None):
+        print("pa :: doSVMwithGridSearch")
+        self.trainTestPairs = self.getDataWithTest(df, 'classified')
+        X_train, X_test, y_train, y_test = self.trainTestPairs
+
+        df = df.head(10)
+        print("df")
+        print(df)
+
+        scores = ['precision', 'recall']
+
+        for score in scores:
+            print ("# Turning hyper-parameters for %s" % score)
+            print ()
+            clf = GridSearchCV(SVC(), self.tuned_parameters, cv=KFold(n_splits=10, random_state=0))
+            clf.fit(X_train, y_train)
+            print("Best parameters set found on development set:")
+            print()
+            print(clf.best_params_)
+            print()
+            print("Grid scores on training set:")
+            print()
+            means = clf.cv_results_['mean_test_score']
+            stds = clf.cv_results_['std_test_score']
+            for mean, std, params in zip(means, stds, clf.cv_results_['params']):
+                print("%0.3f (+/-%0.3f) for %r" % (mean, std * 2, params))
+            print()
+            print("Detailed classification report:")
+            print()
+            print("The model is trained on the full development set.")
+            print("The scores are computed on the full evaluation set.")
+            print()
+            y_true, y_pred = y_test, clf.predict(X_test)
+            print(confusion_matrix(y_true, y_pred))
+            print(classification_report(y_true, y_pred))
+            print()
     
     def doNBC(self):
         print("NBC training ...")
@@ -467,17 +540,10 @@ fn = "dummy/classified/reclean.classified.csv"
 
 # loading
 df = pSvmnbc.getDF()
-pSvmnbc.dfProccess = df
-pSvmnbc.trainTestPairs = pSvmnbc.doKFold(df.values, df['classified'], nsplits=5)
-
-# linear kernel
-pSvmnbc.CRange = [10e-2, 10e-1, 1, 10e1, 10e2, 10e3, 10e4]
-model, X_train, X_test, y_train, y_test = pSvmnbc.doSVM()
-
-# rbf, convent : Crange use same Crange, gammarange use Crange
-pSvmnbc.gammaRange = pSvmnbc.CRange
-model, X_train, X_test, y_train, y_test = pSvmnbc.doSVMRBF()
-
+# pSvmnbc.doFullSVM(df)
+# pSvmnbc.trainTestPairs = self.getDataWithTest(df, 'classified')
+# doKFold(df.values, df['classified'])
+pSvmnbc.doSVMwithGridSearch(df)
 ###### svm
 
 # y_pred = pSvmnbc.doTestModel(model, X_test, y_test, "SVM::" + model.kernel)
