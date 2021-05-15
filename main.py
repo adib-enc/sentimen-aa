@@ -1,10 +1,10 @@
 import re
-import pandas as pd # normal pandas
+# import pandas as pd # normal pandas
 
 #modins
-# import modin.pandas as pd 
-# import ray
-# ray.init()
+import modin.pandas as pd 
+import ray
+ray.init()
 
 import numpy as np
 import string
@@ -280,13 +280,20 @@ class SVMNBCProcessor(Processor):
     
     """
     thx to PUTRI AYU @its
-    """
-    def doSVMwithGridSearch(self, df = None):
-        print("pa :: doSVMwithGridSearch")
-        self.trainTestPairs = self.getDataWithTest(df, 'classified')
-        X_train, X_test, y_train, y_test = self.trainTestPairs
 
-        df = df.head(10)
+    w/ n_jobs=4
+    """
+    def doSVMwithGridSearch(self, df = None, n_jobs=4):
+        print("pa :: doSVMwithGridSearch")
+        # self.trainTestPairs = self.getDataWithTest(df, 'classified')
+        # X_train, X_test, y_train, y_test = self.trainTestPairs
+        
+        dflabel = df['classified']
+        df = df.drop('classified', axis=1)
+        X_train, X_test, y_train, y_test = train_test_split(df, dflabel, test_size=0.1,random_state=109)
+
+        # df = df.head(10)
+        print(self.now())
         print("df")
         print(df)
 
@@ -294,8 +301,10 @@ class SVMNBCProcessor(Processor):
 
         for score in scores:
             print ("# Turning hyper-parameters for %s" % score)
+            print ("w/ n_jobs=4")
             print ()
-            clf = GridSearchCV(SVC(), self.tuned_parameters, cv=KFold(n_splits=10, random_state=0))
+            # clf = GridSearchCV(SVC(), self.tuned_parameters, cv=KFold(n_splits=10, random_state=0))
+            clf = GridSearchCV(SVC(), self.tuned_parameters, cv=KFold(n_splits=10), n_jobs=n_jobs)
             clf.fit(X_train, y_train)
             print("Best parameters set found on development set:")
             print()
@@ -305,8 +314,12 @@ class SVMNBCProcessor(Processor):
             print()
             means = clf.cv_results_['mean_test_score']
             stds = clf.cv_results_['std_test_score']
+            paramsOut = []
             for mean, std, params in zip(means, stds, clf.cv_results_['params']):
-                print("%0.3f (+/-%0.3f) for %r" % (mean, std * 2, params))
+                p = "%0.3f (+/-%0.3f) for %r" % (mean, std * 2, params)
+                print(p)
+                paramsOut.append(p)
+
             print()
             print("Detailed classification report:")
             print()
@@ -314,9 +327,27 @@ class SVMNBCProcessor(Processor):
             print("The scores are computed on the full evaluation set.")
             print()
             y_true, y_pred = y_test, clf.predict(X_test)
-            print(confusion_matrix(y_true, y_pred))
-            print(classification_report(y_true, y_pred))
+            
+            cm = confusion_matrix(y_true, y_pred)
+            cr = classification_report(y_true, y_pred)
+
+            print(cm)
+            print(cr)
+
+            fname = score + ".txt"
+            cont = {
+                "bestparam" : clf.best_params_,
+                "means" : means,
+                "stds" : stds,
+                "params" : paramsOut,
+                "confmatrix" : cm,
+                "classfreport" : cr,
+            }
+            self.toFileWithTimestamp(fname, str(cont))
             print()
+            print(self.now())
+
+        print(self.now())
     
     def doNBC(self):
         print("NBC training ...")
@@ -543,7 +574,7 @@ df = pSvmnbc.getDF()
 # pSvmnbc.doFullSVM(df)
 # pSvmnbc.trainTestPairs = self.getDataWithTest(df, 'classified')
 # doKFold(df.values, df['classified'])
-pSvmnbc.doSVMwithGridSearch(df)
+pSvmnbc.doSVMwithGridSearch(df, 3)
 ###### svm
 
 # y_pred = pSvmnbc.doTestModel(model, X_test, y_test, "SVM::" + model.kernel)

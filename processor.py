@@ -19,6 +19,8 @@ factory = StemmerFactory()
 stemmer = factory.create_stemmer()
 """
 
+from datetime import datetime
+
 import matplotlib.pyplot as plt
 
 # sklearns
@@ -69,6 +71,20 @@ class Processor:
     
     def percentProgress(self, now, total):
         return (now / total) * 100
+
+    def now(self, fmt = None):
+        if fmt is None:
+            fmt = '%Y-%m-%d-%H:%M:%S'
+
+        return datetime.today().strftime(fmt)
+
+    def toFile(self, fname, cont):
+        print("out to::",fname)
+        return open(fname,'w').write(cont)
+
+    def toFileWithTimestamp(self, fname, cont):
+        fname = self.now() + "." + fname
+        return self.toFile(fname, cont)
     
     """
     sample
