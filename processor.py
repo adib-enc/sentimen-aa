@@ -28,6 +28,8 @@ from sklearn.cluster import KMeans
 from sklearn.naive_bayes import GaussianNB
 from sklearn import svm
 
+import joblib
+
 """
 speed up training
 https://medium.com distributed-computing-with-ray/how-to-speed-up-scikit-learn-model-training-aaf17e2d1e1
@@ -259,3 +261,18 @@ class Processor:
             r = dfs
 
         return r
+
+    def saveModel(self):
+        pass
+        """
+        # save the model to disk
+        filename = 'finalized_model.sav'
+        joblib.dump(model, filename)
+        
+        # some time later...
+        
+        # load the model from disk
+        loaded_model = joblib.load(filename)
+        result = loaded_model.score(X_test, Y_test)
+        print(result)
+        """
