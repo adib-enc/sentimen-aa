@@ -173,6 +173,18 @@ class SVMNBCProcessor(Processor):
             ['positive', 'negative', 'netral'],
             [1, -1, 0])
         return df
+    
+    """
+    return dffeature
+    """
+    def getFeatureAndLabel(self):
+        df = self.getDF()
+        print(df)
+        dfr = df
+        feature = dfr.drop("classified", axis=1)
+        label = df["classified"]
+
+        return feature, label
 
     def getDataWithTest(self, df, label, test_size=0.1):
         # Split dataset into training set and test set
@@ -193,6 +205,7 @@ class SVMNBCProcessor(Processor):
     """
     def doKFold(self, feature, label, nsplits=5):
         print("10fold")
+        print("StratifiedShuffleSplit")
         
         X, y = (feature, label)
         
@@ -226,14 +239,16 @@ class SVMNBCProcessor(Processor):
 
     # use kfold crossval
     # X_train, X_test, y_train, y_test = self.doKFold(df.values, df['classified'], nsplits=5)
+
+    current best:
+    {'C': 1000, 'gamma': 0.001, 'kernel': 'rbf'}
     """
     def doSVM(self, kernel="linear"):
         print("SVM::{}::training ...".format(kernel))
         print("C:",self.C,"gamma:",self.gamma)
         # df = self.getDF()
-        df = self.dfProccess
-
-        print(df.values)
+        # df = self.dfProccess
+        # print(df.values)
 
         # features, label = (df.values, df['classified'])
         # X_train, X_test, y_train, y_test = self.getDataWithTest(df, 'classified')
@@ -351,12 +366,10 @@ class SVMNBCProcessor(Processor):
     
     def doNBC(self):
         print("NBC training ...")
-        df = self.getDF()
-        # iloc[: , [2, df.shape[1]-1]]
-        print(df.values)
 
         # features, label = (df.values, df['classified'])
-        X_train, X_test, y_train, y_test = self.getDataWithTest(df, 'classified')
+        # X_train, X_test, y_train, y_test = self.getDataWithTest(df, 'classified')
+        X_train, X_test, y_train, y_test = self.trainTestPairs
         features, label = (X_train, y_train)
 
         model = GaussianNB()
@@ -563,24 +576,51 @@ fn = "dummy/classified/reclean.classified.csv"
 # pKmp.process()
 
 
-# model, X_train, X_test, y_train, y_test = pSvmnbc.doNBC()
-# y_pred = pSvmnbc.doTestModel(model, X_test, y_test)
-
-
 ###### svm
 
 # loading
-df = pSvmnbc.getDF()
+# df = pSvmnbc.getDF()
+dffeature, label = pSvmnbc.getFeatureAndLabel()
 # pSvmnbc.doFullSVM(df)
 # pSvmnbc.trainTestPairs = self.getDataWithTest(df, 'classified')
 # doKFold(df.values, df['classified'])
-pSvmnbc.doSVMwithGridSearch(df, 3)
+# pSvmnbc.doSVMwithGridSearch(df, 3)
+pSvmnbc.C = 1000
+pSvmnbc.gamma = 1e-3
+pSvmnbc.trainTestPairs = pSvmnbc.doKFold(dffeature.values, label)
+model, X_train, X_test, y_train, y_test = pSvmnbc.doSVM("rbf")
+
+# df = pd.DataFrame()
+# df["svc_classes"] = model.classes_
+# df.to_csv("svc_classes.csv")
+# print("to svc_classes.csv")
 ###### svm
 
 # y_pred = pSvmnbc.doTestModel(model, X_test, y_test, "SVM::" + model.kernel)
+"""
+RPA micro: {'recall': 0.8314238952536824, 'precision': 0.8314238952536824, 'accuracy': 0.8314238952536824, 'confMatrix': array([[330,   5,  33],
+       [ 10,  47,  12],
+       [ 30,  13, 131]])}
+RPA macro: {'recall': 0.7769240379810095, 'precision': 0.7864289989289989, 'accuracy': 0.8314238952536824, 'confMatrix': array([[330,   5,  33],
+       [ 10,  47,  12],
+       [ 30,  13, 131]])}
+"""
 # pSvmnbc.interactivePredict()
 
 # pSvmnbc = SVMNBCProcessor()
+
+# use previous pSvmnbc.trainTestPairs
+modelnbc, nbcX_train, nbcX_test, nbcy_train, nbcy_test = pSvmnbc.doNBC()
+nbcy_pred = pSvmnbc.doTestModel(modelnbc, nbcX_test, nbcy_test)
+"""
+RPA micro: {'recall': 0.5270049099836334, 'precision': 0.5270049099836334, 'accuracy': 0.5270049099836334, 'confMatrix': array([[170,  52, 146],
+       [ 14,  42,  13],
+       [ 47,  17, 110]])}
+RPA macro: {'recall': 0.5676120273196735, 'precision': 0.507743682464872, 'accuracy': 0.5270049099836334, 'confMatrix': array([[170,  52, 146],
+       [ 14,  42,  13],
+       [ 47,  17, 110]])}
+"""
+
 
 # df = pSvmnbc.getDF()
 # X_train, X_test, y_train, y_test = pSvmnbc.procKFold(df.values, df['classified'])
