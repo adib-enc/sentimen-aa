@@ -493,6 +493,17 @@ class RegresiLMProcessor(Processor):
         print(dfL['word_count'])
 
         return dfL
+    
+    def mergeDummyWithSvmnbc(self):
+        print("merging...")
+        df = pd.read_csv("dummy/svmnbc.classifications.csv")
+        
+        dfL = pd.read_csv("dummy/_dummylinear.csv")
+        dfL['svm_class'] = df['svm_class']
+        dfL['nbc_class'] = df['nbc_class']
+
+        dfL.to_csv("dummy/_dummylinear.csv")
+        return dfL
 
     def mergeWithKeyword(self):
         pass
@@ -580,15 +591,15 @@ fn = "dummy/classified/reclean.classified.csv"
 
 # loading
 # df = pSvmnbc.getDF()
-dffeature, label = pSvmnbc.getFeatureAndLabel()
+# dffeature, label = pSvmnbc.getFeatureAndLabel()
 # pSvmnbc.doFullSVM(df)
 # pSvmnbc.trainTestPairs = self.getDataWithTest(df, 'classified')
 # doKFold(df.values, df['classified'])
 # pSvmnbc.doSVMwithGridSearch(df, 3)
-pSvmnbc.C = 1000
-pSvmnbc.gamma = 1e-3
-pSvmnbc.trainTestPairs = pSvmnbc.doKFold(dffeature.values, label)
-model, X_train, X_test, y_train, y_test = pSvmnbc.doSVM("rbf")
+# pSvmnbc.C = 1000
+# pSvmnbc.gamma = 1e-3
+# pSvmnbc.trainTestPairs = pSvmnbc.doKFold(dffeature.values, label)
+# model, X_train, X_test, y_train, y_test = pSvmnbc.doSVM("rbf")
 
 # df = pd.DataFrame()
 # df["svc_classes"] = model.classes_
@@ -610,8 +621,8 @@ RPA macro: {'recall': 0.7769240379810095, 'precision': 0.7864289989289989, 'accu
 # pSvmnbc = SVMNBCProcessor()
 
 # use previous pSvmnbc.trainTestPairs
-modelnbc, nbcX_train, nbcX_test, nbcy_train, nbcy_test = pSvmnbc.doNBC()
-nbcy_pred = pSvmnbc.doTestModel(modelnbc, nbcX_test, nbcy_test)
+# modelnbc, nbcX_train, nbcX_test, nbcy_train, nbcy_test = pSvmnbc.doNBC()
+# nbcy_pred = pSvmnbc.doTestModel(modelnbc, nbcX_test, nbcy_test)
 """
 RPA micro: {'recall': 0.5270049099836334, 'precision': 0.5270049099836334, 'accuracy': 0.5270049099836334, 'confMatrix': array([[170,  52, 146],
        [ 14,  42,  13],
@@ -621,6 +632,7 @@ RPA macro: {'recall': 0.5676120273196735, 'precision': 0.507743682464872, 'accur
        [ 47,  17, 110]])}
 """
 
+pRegresi.mergeDummyWithSvmnbc()
 
 # df = pSvmnbc.getDF()
 # X_train, X_test, y_train, y_test = pSvmnbc.procKFold(df.values, df['classified'])
