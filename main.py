@@ -94,13 +94,15 @@ class KMeansProcessor(Processor):
     """
     def process(self):
         print("processing kmeans..")
+        print(self.now())
         df = self.getDataframe("sentimenY1-200MB-8k")
+        dfprep = df['preprocessed']
         df = df.drop([
             'no',
             'Unnamed: 0', 
             'Unnamed: 0.1', 
             'Unnamed: 0.1.1', 
-            'classified',
+            # 'classified',
             'status_id', 'created_at', 'screen_name', 'text', 'preprocessed', 'classify_data'], axis=1)
         # df = df.replace(
         #     ['positive', 'negative', 'netral'],
@@ -108,16 +110,25 @@ class KMeansProcessor(Processor):
         
         # npDf = df.to_numpy()
         # npDf = df.values
+        df = df.replace(
+            ['positive', 'negative', 'netral'],
+            [1, -1, 0])
 
         # X = df.iloc[: , [1, df.shape[1]-1]].values
         X = df.values
 
         # self.optimizeClusterN(X)
+        # return
         i = 3
         kmeans = KMeans(n_clusters=i, init='k-means++', max_iter= 300, n_init= 10, random_state= 0)
         kmeans.fit(X)
+        # todo : joblib
         df['kmean_label'] = kmeans.labels_
-        df.to_csv("dummy/sentimenY1-200MB-8k-kmeansd.csv")
+        df['preprocessed'] = dfprep
+        # df.to_csv("dummy/sentimenY1-200MB-8k-kmeansd.csv")
+        df.to_csv("dummy/sentimenY1-200MB-8k-kmeansd-2.csv")
+
+        print(self.now())
 
         pass
 
@@ -215,12 +226,41 @@ class SVMNBCProcessor(Processor):
         kf = StratifiedShuffleSplit(n_splits=nsplits, test_size=0.1)
         kf.get_n_splits(X)
 
+        i = 1
+        print("init::",self.now())
+        # results = []
         for train_index, test_index in kf.split(X, y):
-            print("TRAIN:", train_index, "TEST:", test_index)
+            # print("TRAIN:", train_index, "TEST:", test_index)
             X_train, X_test = X[train_index], X[test_index]
             y_train, y_test = y[train_index], y[test_index]
+            print("i",i)
+            i+=1
+            # too big for memory
+            # results.append({
+            #     "nsplit": i,
+            #     "data": (X_train, X_test, y_train, y_test)
+            # })
+            print("="*32)
+            # print("nsplit",d['nsplit'])
+
+            # === training
+            pSvmnbc.trainTestPairs = (X_train, X_test, y_train, y_test)
+            model, X_train, X_test, y_train, y_test = pSvmnbc.doSVM("rbf")
+            y_pred, rpaMic, rpaMac = pSvmnbc.doTestModel(model, X_test, y_test, "SVM::" + model.kernel)
+            print(self.now())
+            self.toFileWithTimestamp("nsplit" + str(i), str((y_pred, rpaMic, rpaMac)) )
         
-        return X_train, X_test, y_train, y_test
+        # return results
+
+    def kfoldAndTrain(self):
+        print("kfoldAndTrain")
+        pSvmnbc = self
+        dffeature, label = pSvmnbc.getFeatureAndLabel()
+        pSvmnbc.C = 1000
+        pSvmnbc.gamma = 1e-3
+        pSvmnbc.doKFold(dffeature.values, label, 10)
+
+        print(self.now())
 
     def procKFold(self, df, label):
         print("proc do kfold")
@@ -358,6 +398,10 @@ class SVMNBCProcessor(Processor):
                 "confmatrix" : cm,
                 "classfreport" : cr,
             }
+            
+            # todo
+            print("Serializing gridsearch clf..")
+            
             self.toFileWithTimestamp(fname, str(cont))
             print()
             print(self.now())
@@ -512,6 +556,52 @@ class RegresiLMProcessor(Processor):
     def process(self):
         pass
 
+class Wordcloud(Processor):
+    preprocessor = None
+    def __init__(self, *args, **kwargs):
+        super(Wordcloud, self).__init__(*args, **kwargs)
+        self.preprocessor = PreProcessor()
+    
+    def formCloudFromKmeans(self):
+        print("formCloudFromKmeans")
+        df = self.getDataframe(typef = "sentimenY1-200MB-8k-kmean-2")
+        uniqs = df['kmean_label'].unique()
+        print(uniqs)
+        for u in uniqs:
+            dfdata = df.loc[df.kmean_label == u]
+            fname = "cluster." + str(u) + ".wcloud"
+            with open(fname, "w") as wcloudfile:
+                print("writing",fname)
+                for preprocessed in dfdata['preprocessed']:
+                    preprocessed = str(preprocessed)
+                    write = preprocessed.replace(" ", "\n")
+                    wcloudfile.write(write)
+                wcloudfile.close()
+                print("to file",fname)
+
+        pass
+
+    def form3Class(self):
+        print("form3Class")
+        df = self.getDataframe(typef = "classified-clean")
+        preprocessor = self.preprocessor
+        classes = ['negative', 'positive', 'netral']
+
+        for c in classes:
+            dfdata = df.loc[df.classified == c]
+            print(c)
+            print(dfdata)
+            fname = "wcloud."+c
+            with open(fname, "w") as wcloudfile:
+                print("writing",fname)
+                for preprocessed in dfdata['preprocessed']:
+                    write = preprocessed.replace(" ", "\n")
+                    wcloudfile.write(write)
+                wcloudfile.close()
+                print("to file",fname)
+
+        return
+
 baseio = BaseIO()
 p = Processor()
 preprocessor = PreProcessor()
@@ -519,6 +609,7 @@ preprocessor = PreProcessor()
 pKmp = KMeansProcessor()
 pSvmnbc = SVMNBCProcessor()
 pRegresi = RegresiLMProcessor()
+pWcloud = Wordcloud()
 
 def initialize():
     crawled = [
@@ -598,7 +689,11 @@ fn = "dummy/classified/reclean.classified.csv"
 # pSvmnbc.doSVMwithGridSearch(df, 3)
 # pSvmnbc.C = 1000
 # pSvmnbc.gamma = 1e-3
-# pSvmnbc.trainTestPairs = pSvmnbc.doKFold(dffeature.values, label)
+# kfoldResults = pSvmnbc.doKFold(dffeature.values, label, 10)
+
+# for d in kfoldResults:
+#     print("nsplit",d['nsplit'])
+#     pSvmnbc.trainTestPairs = d['data']
 # model, X_train, X_test, y_train, y_test = pSvmnbc.doSVM("rbf")
 
 # df = pd.DataFrame()
@@ -632,7 +727,23 @@ RPA macro: {'recall': 0.5676120273196735, 'precision': 0.507743682464872, 'accur
        [ 47,  17, 110]])}
 """
 
-pRegresi.mergeDummyWithSvmnbc()
+# pSvmnbc.doKFold()
+# pSvmnbc.kfoldAndTrain()
+
+# pRegresi.mergeDummyWithSvmnbc()
+
+"""
+wordcloud
+1. clust 1
+2. clust 2
+3. clust 3
+4. pos
+5. neg
+6. net
+"""
+
+# pWcloud.form3Class()
+pWcloud.formCloudFromKmeans()
 
 # df = pSvmnbc.getDF()
 # X_train, X_test, y_train, y_test = pSvmnbc.procKFold(df.values, df['classified'])

@@ -157,6 +157,8 @@ class Processor:
         r = None
         if typef == "file":
             r = None
+        elif typef == "classified-clean":
+            r = pd.read_csv("dummy/classified/reclean.classified.csv", header=0, lineterminator='\n')
         elif typef == "classified-filtered":
             r = pd.read_csv("dummy/sentimenY1result.csv", header=0, lineterminator='\n')
         elif typef == "sentimenY1-200MB":
@@ -164,6 +166,9 @@ class Processor:
         elif typef == "sentimenY1-200MB-8k-kmean":
             useCols = ['kmean_label']
             r = pd.read_csv("dummy/sentimenY1-200MB-8k-kmeansd.csv", header=0, lineterminator='\n',usecols=useCols)
+        elif typef == "sentimenY1-200MB-8k-kmean-2":
+            useCols = ['kmean_label', "preprocessed"]
+            r = pd.read_csv("dummy/sentimenY1-200MB-8k-kmeansd-2.csv", header=0, lineterminator='\n',usecols=useCols)
         elif typef == "sentimenY1-200MB-8k":
             r = pd.read_csv("dummy/w8ksentimenY1result.csv", header=0, lineterminator='\n')
         elif typef == "sentimenY1-200MB-dfval":
