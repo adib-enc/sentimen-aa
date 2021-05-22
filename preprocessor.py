@@ -534,6 +534,48 @@ class PreProcessor(Processor):
             # wordWeights[word] = wList
         # self.results["tfidf"] = 1
         dfClassified.to_csv("dummy/"+alias+"sentimenY1result.csv")
+    
+    def tfPerTweet(self, dfClassified, dfTerms, alias = "tf"):
+        print("tfidf pertweet weighting..")
+        time.sleep(1)
+        
+        preprocessed = dfClassified['preprocessed']
+        # wordWeights = {}
+
+        total = len(preprocessed) * len(dfTerms['words'])
+        now = 0
+        
+        started = self.progressor({
+            'type': "start",
+            'total': total,
+            'now': now,
+        })
+
+        self.progressModer = 100000
+
+        for word in dfTerms['words']:
+            wList = []
+            for p in preprocessed:
+                if isinstance(p, str):
+                    psplit = p.split(" ")
+
+                    self.progressor({
+                        'type': "report",
+                        'total': total,
+                        'now': now,
+                    })
+
+                    TF = psplit.count(word)
+
+                    wList.append(TF)
+                else:
+                    wList.append(0)
+                now += 1
+                
+            dfClassified[word] = wList
+            # wordWeights[word] = wList
+        # self.results["tfidf"] = 1
+        dfClassified.to_csv("dummy/"+alias+"tf.pertweet.csv")
 
     def process(self):
         pass

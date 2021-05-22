@@ -102,7 +102,7 @@ class KMeansProcessor(Processor):
             'Unnamed: 0', 
             'Unnamed: 0.1', 
             'Unnamed: 0.1.1', 
-            # 'classified',
+            'classified',
             'status_id', 'created_at', 'screen_name', 'text', 'preprocessed', 'classify_data'], axis=1)
         # df = df.replace(
         #     ['positive', 'negative', 'netral'],
@@ -521,7 +521,9 @@ class RegresiLMProcessor(Processor):
         print("buildVariabelPrediktor")
         dfs = self.getDataframe("df-partial")
         df = self.concatDataframeRows(dfs)
-        df.to_csv("dummy/_dummylinear.csv")
+        # ffname = "dummy/_dummylinear.csv"
+        fname = "dummy/_dummylinear2.csv"
+        df.to_csv(fname)
         print("built")
         return df
 
@@ -551,6 +553,21 @@ class RegresiLMProcessor(Processor):
 
     def mergeWithKeyword(self):
         pass
+        #keyword
+    
+    def inserColRetweetNFavorit(self):
+        print("inserColRetweetNFavorit")
+        cols = [
+            ['retweet_count'], 
+            ['favorite_count']
+        ]
+        dfL = pd.read_csv("dummy/_dummylinear.csv")
+        dfL2 = pd.read_csv("dummy/_dummylinear2.csv")
+
+        for c in cols:
+            dfL[c] = dfL2[c]
+        
+        dfL.to_csv("dummy/_dummylinear.csv")
         #keyword
 
     def process(self):
@@ -743,7 +760,7 @@ wordcloud
 """
 
 # pWcloud.form3Class()
-pWcloud.formCloudFromKmeans()
+# pWcloud.formCloudFromKmeans()
 
 # df = pSvmnbc.getDF()
 # X_train, X_test, y_train, y_test = pSvmnbc.procKFold(df.values, df['classified'])
@@ -753,12 +770,20 @@ pWcloud.formCloudFromKmeans()
 # df = pRegresi.buildVariabelPrediktor()
 # pRegresi.mergeVPwithKmean(df)
 
+
 # df = pd.read_csv("dummy/_dummylinear.csv")
 # df.source.replace()
 # print(df['kmean_label'].unique())
 # print(df['hashtags_vp'].unique())
 # print(df['source'].unique())
 # search
+
+# ================================ 2021-05-22 ================================
+# pRegresi.inserColRetweetNFavorit()
+# 
+# preprocessor.tfPerTweet(df, dfTerms, "w8k")
+# df = p.getDataframe("tf-pertweet")
+# 
 """
 df.loc[df['status_id'] == 'x1328208693461196803']
 df.loc[df['user_id'] == 'x765149955396734976']['text']

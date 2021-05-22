@@ -1,10 +1,10 @@
 import re
-import pandas as pd # normal pandas
+# import pandas as pd # normal pandas
 
 #modins
-# import modin.pandas as pd 
-# import ray
-# ray.init()
+import modin.pandas as pd 
+import ray
+ray.init()
 
 import numpy as np
 import string
@@ -111,7 +111,7 @@ class Processor:
             print("start: ",starttime)
 
             return starttime
-        elif typ == "progress":
+        elif typ == "progress" or typ == "report":
             now = arg['now']
             total = arg['total']
             if now % self.progressModer == 0:
@@ -157,6 +157,8 @@ class Processor:
         r = None
         if typef == "file":
             r = None
+        elif typef == "tf-pertweet":
+            r = pd.read_csv("dummy/w8ktf.pertweet.csv", header=0, lineterminator='\n')
         elif typef == "classified-clean":
             r = pd.read_csv("dummy/classified/reclean.classified.csv", header=0, lineterminator='\n')
         elif typef == "classified-filtered":
@@ -206,6 +208,8 @@ class Processor:
                 'followers_count',
                 'friends_count',
                 'favourites_count',
+                'favorite_count',
+                'retweet_count', 
                 'verified',
                 'source', #src device
             ]
