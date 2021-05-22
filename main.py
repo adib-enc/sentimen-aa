@@ -77,7 +77,7 @@ class KMeansProcessor(Processor):
         distortions = []
         from scipy.spatial.distance import cdist
 
-        rn = range(1, 25)
+        rn = range(1, 26)
 
         for i in rn:
             print("wcss",i)
@@ -89,6 +89,7 @@ class KMeansProcessor(Processor):
             # except Exception as e:
             #     print("error @ i=",i)
 
+        print(self.now())
         open("wcss"+self.now(),"w").write(str(wcss))
         # open("distortions"+self.now(),"w").write(str(distortions))
         plt.plot(range(1, len(wcss)+1),wcss)
@@ -128,10 +129,11 @@ class KMeansProcessor(Processor):
         print(X)
         print(X.size)
 
-        self.optimizeClusterN(X)
-        print(self.now())
-        return
-        i = 3
+        # self.optimizeClusterN(X)
+        
+        # return
+        i = 5
+        print("i",i)
         kmeans = KMeans(n_clusters=i, init='k-means++', max_iter= 300, n_init= 10, random_state= 0)
         kmeans.fit(X)
         # todo : joblib
@@ -139,6 +141,7 @@ class KMeansProcessor(Processor):
         df['preprocessed'] = dfprep
         # df.to_csv("dummy/sentimenY1-200MB-8k-kmeansd.csv")
         # df.to_csv("dummy/sentimenY1-200MB-8k-kmeansd-2.csv")
+        df.to_csv("dummy/sentimenY1-200MB-8k-kmeansd-5c.csv")
 
         fname = "kmeans.model."+self.now()
         joblib.dump(kmeans, fname)
@@ -768,7 +771,8 @@ fn = "dummy/classified/reclean.classified.csv"
 # pprint(preprocessor.termFrequency("aabbbcdefggg"))
 # pprint(preprocessor.termFrequency(preprocessor.getGlobalWords()))
 
-## pKmp.process()
+### pKmp.process()
+pKmp.process()
 
 
 ###### svm
@@ -863,7 +867,7 @@ wordcloud
 # preprocessor.tfPerTweet(df, dfTerms, "w8k")
 # df = p.getDataframe("tf-pertweet")
 
-pWcloud.formWordcloudFromSVMPrediction()
+# pWcloud.formWordcloudFromSVMPrediction()
 # 
 """
 df.loc[df['status_id'] == 'x1328208693461196803']
