@@ -2,9 +2,9 @@ import re
 # import pandas as pd # normal pandas
 
 #modins
-import modin.pandas as pd 
-import ray
-ray.init()
+# import modin.pandas as pd 
+# import ray
+# ray.init()
 
 import numpy as np
 import string
@@ -74,19 +74,28 @@ class KMeansProcessor(Processor):
     def optimizeClusterN(self, X):
         print("kmeans::optimizing..")
         wcss = []
-        for i in range(1, 11):
+        distortions = []
+        from scipy.spatial.distance import cdist
+
+        rn = range(1, 25)
+
+        for i in rn:
             print("wcss",i)
             kmeans = KMeans(n_clusters=i, init='k-means++', max_iter= 300, n_init= 10, random_state= 0)
             kmeans.fit(X)
+            # distortions.append(sum(np.min(cdist(X, kmeans.cluster_centers_, 'euclidean'), axis=1)) / X.shape[0])
             wcss.append(kmeans.inertia_)
             # try:
             # except Exception as e:
             #     print("error @ i=",i)
 
+        open("wcss"+self.now(),"w").write(str(wcss))
+        # open("distortions"+self.now(),"w").write(str(distortions))
         plt.plot(range(1, len(wcss)+1),wcss)
+        # plt.plot(range(1, len(distortions)+1),distortions)
         plt.title('The Elbow Method')
         plt.xlabel('Number of clusters K')
-        plt.ylabel('Average Within-Cluster distance to Centroid (WCSS)')
+        plt.ylabel('Average Within-Cluster distance to Centroid (WCSS) distort')
         plt.show()
 
     """
@@ -116,9 +125,12 @@ class KMeansProcessor(Processor):
 
         # X = df.iloc[: , [1, df.shape[1]-1]].values
         X = df.values
+        print(X)
+        print(X.size)
 
-        # self.optimizeClusterN(X)
-        # return
+        self.optimizeClusterN(X)
+        print(self.now())
+        return
         i = 3
         kmeans = KMeans(n_clusters=i, init='k-means++', max_iter= 300, n_init= 10, random_state= 0)
         kmeans.fit(X)
@@ -126,8 +138,11 @@ class KMeansProcessor(Processor):
         df['kmean_label'] = kmeans.labels_
         df['preprocessed'] = dfprep
         # df.to_csv("dummy/sentimenY1-200MB-8k-kmeansd.csv")
-        df.to_csv("dummy/sentimenY1-200MB-8k-kmeansd-2.csv")
+        # df.to_csv("dummy/sentimenY1-200MB-8k-kmeansd-2.csv")
 
+        fname = "kmeans.model."+self.now()
+        joblib.dump(kmeans, fname)
+        print(fname)
         print(self.now())
 
         pass
@@ -214,8 +229,8 @@ class SVMNBCProcessor(Processor):
 
     X_train, X_test, y_train, y_test = self.doKFold(df.values, df['classified'], nsplits=5)
     """
-    def doKFold(self, feature, label, nsplits=5):
-        print("10fold")
+    def doKFold(self, feature, label, nsplits=5, kernel="rbf"):
+        print("10fold",kernel)
         print("StratifiedShuffleSplit")
         
         X, y = (feature, label)
@@ -229,26 +244,33 @@ class SVMNBCProcessor(Processor):
         i = 1
         print("init::",self.now())
         # results = []
+        eq = "="*16
         for train_index, test_index in kf.split(X, y):
             # print("TRAIN:", train_index, "TEST:", test_index)
+            print(eq,"split",i,eq)
+            print("TRAIN, TEST")
+            print(len(train_index), len(test_index))
             X_train, X_test = X[train_index], X[test_index]
             y_train, y_test = y[train_index], y[test_index]
+            print("="*32)
             print("i",i)
-            i+=1
+            
             # too big for memory
             # results.append({
             #     "nsplit": i,
             #     "data": (X_train, X_test, y_train, y_test)
             # })
-            print("="*32)
             # print("nsplit",d['nsplit'])
 
             # === training
             pSvmnbc.trainTestPairs = (X_train, X_test, y_train, y_test)
-            model, X_train, X_test, y_train, y_test = pSvmnbc.doSVM("rbf")
+            model, X_train, X_test, y_train, y_test = pSvmnbc.doSVM(kernel)
             y_pred, rpaMic, rpaMac = pSvmnbc.doTestModel(model, X_test, y_test, "SVM::" + model.kernel)
             print(self.now())
-            self.toFileWithTimestamp("nsplit" + str(i), str((y_pred, rpaMic, rpaMac)) )
+            
+            out = str((y_pred, rpaMic, rpaMac))
+            self.toFileWithTimestamp(kernel + "nsplit" + str(i), out)
+            i+=1
         
         # return results
 
@@ -259,6 +281,15 @@ class SVMNBCProcessor(Processor):
         pSvmnbc.C = 1000
         pSvmnbc.gamma = 1e-3
         pSvmnbc.doKFold(dffeature.values, label, 10)
+
+        print(self.now())
+
+    def kfoldAndTrainLinear(self):
+        print("kfoldAndTrain linear")
+        pSvmnbc = self
+        dffeature, label = pSvmnbc.getFeatureAndLabel()
+        pSvmnbc.C = 0.01
+        pSvmnbc.doKFold(dffeature.values, label, 10, kernel="linear")
 
         print(self.now())
 
@@ -450,11 +481,15 @@ class SVMNBCProcessor(Processor):
         # Model Accuracy, how often is the classifier correct?
         print("RPA micro:",rpaMic)
 
+        # tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
+
         rpaMac = {
             "recall": marecall,
             "precision": maprecision,
             "accuracy": accuracy,
             "confMatrix": self.getConfussionMatrix(y_true, y_pred, labels = "a"),
+            "ravel": confusion_matrix(y_true, y_pred).ravel(),
+            "fmt": "(tn, fp, fn, tp)"
         }
         print("RPA macro:",rpaMac)
 
@@ -692,7 +727,7 @@ fn = "dummy/classified/reclean.classified.csv"
 # pprint(preprocessor.termFrequency("aabbbcdefggg"))
 # pprint(preprocessor.termFrequency(preprocessor.getGlobalWords()))
 
-# pKmp.process()
+## pKmp.process()
 
 
 ###### svm
@@ -746,6 +781,7 @@ RPA macro: {'recall': 0.5676120273196735, 'precision': 0.507743682464872, 'accur
 
 # pSvmnbc.doKFold()
 # pSvmnbc.kfoldAndTrain()
+pSvmnbc.kfoldAndTrainLinear()
 
 # pRegresi.mergeDummyWithSvmnbc()
 

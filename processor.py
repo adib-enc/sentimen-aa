@@ -1,10 +1,10 @@
 import re
-# import pandas as pd # normal pandas
+import pandas as pd # normal pandas
 
 #modins
-import modin.pandas as pd 
-import ray
-ray.init()
+# import modin.pandas as pd 
+# import ray
+# ray.init()
 
 import numpy as np
 import string

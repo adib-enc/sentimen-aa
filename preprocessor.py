@@ -1,5 +1,5 @@
 import re
-import pandas as pd # normal pandas
+# import pandas as pd # normal pandas
 
 #modins
 # import modin.pandas as pd 
