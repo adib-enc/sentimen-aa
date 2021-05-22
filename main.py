@@ -1,5 +1,5 @@
 import re
-# import pandas as pd # normal pandas
+import pandas as pd # normal pandas
 
 #modins
 # import modin.pandas as pd 
@@ -268,7 +268,11 @@ class SVMNBCProcessor(Processor):
             y_pred, rpaMic, rpaMac = pSvmnbc.doTestModel(model, X_test, y_test, "SVM::" + model.kernel)
             print(self.now())
             
-            out = str((y_pred, rpaMic, rpaMac))
+            dic = {
+                "train": len(train_index),
+                "test": len(test_index),
+            }
+            out = str((y_pred, rpaMic, rpaMac, dic))
             self.toFileWithTimestamp(kernel + "nsplit" + str(i), out)
             i+=1
         
@@ -558,6 +562,8 @@ class RegresiLMProcessor(Processor):
         df = self.concatDataframeRows(dfs)
         # ffname = "dummy/_dummylinear.csv"
         fname = "dummy/_dummylinear2.csv"
+        print(df['favorite_count'])
+        print(df['retweet_count'])
         df.to_csv(fname)
         print("built")
         return df
@@ -586,15 +592,26 @@ class RegresiLMProcessor(Processor):
         dfL.to_csv("dummy/_dummylinear.csv")
         return dfL
 
-    def mergeWithKeyword(self):
+    def merge10colsWithPreprocessed(self):
+        print("merge10colsWithPreprocessed")
+        # dfL = self.getDataframe(typef = "rl10+cols")
+        # dfL2 = self.getDataframe(typef = "classified-clean")
+        
+        # dfL['preprocessed'] = dfL2['preprocessed']
+        fname = "dummy/regresi.linear.10+cols.preped.csv"
+        # dfL.to_csv(fname)
+        # df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
+        # df = pd.read_csv(fname)
+        # df.to_csv(fname)
+
         pass
         #keyword
     
     def inserColRetweetNFavorit(self):
         print("inserColRetweetNFavorit")
         cols = [
-            ['retweet_count'], 
-            ['favorite_count']
+            'retweet_count', 
+            'favorite_count'
         ]
         dfL = pd.read_csv("dummy/_dummylinear.csv")
         dfL2 = pd.read_csv("dummy/_dummylinear2.csv")
@@ -602,7 +619,7 @@ class RegresiLMProcessor(Processor):
         for c in cols:
             dfL[c] = dfL2[c]
         
-        dfL.to_csv("dummy/_dummylinear.csv")
+        dfL.to_csv("dummy/_dummylinear3.csv")
         #keyword
 
     def process(self):
@@ -649,6 +666,30 @@ class Wordcloud(Processor):
                 for preprocessed in dfdata['preprocessed']:
                     write = preprocessed.replace(" ", "\n")
                     wcloudfile.write(write)
+                wcloudfile.close()
+                print("to file",fname)
+
+        return
+    
+    def formWordcloudFromSVMPrediction(self):
+        print("formWordcloudFromSVMPrediction")
+        df = self.getDataframe(typef = "rl10+cols")
+        df = pd.read_csv('dummy/regresi.linear.10+cols.preped.csv')
+        preprocessor = self.preprocessor
+        classes = [1, 0, -1]
+
+        for c in classes:
+            dfdata = df.loc[df.svm_class == c]
+            print(c)
+            print(dfdata)
+            fname = "wcloud.svm." + str(c)
+            with open(fname, "w") as wcloudfile:
+                print("writing",fname)
+                for preprocessed in dfdata['preprocessed']:
+                    # write = 
+                    if isinstance(preprocessed,str):
+                        write = preprocessed.replace(" ", "\n")
+                        wcloudfile.write(write)
                 wcloudfile.close()
                 print("to file",fname)
 
@@ -781,7 +822,7 @@ RPA macro: {'recall': 0.5676120273196735, 'precision': 0.507743682464872, 'accur
 
 # pSvmnbc.doKFold()
 # pSvmnbc.kfoldAndTrain()
-pSvmnbc.kfoldAndTrainLinear()
+# pSvmnbc.kfoldAndTrainLinear()
 
 # pRegresi.mergeDummyWithSvmnbc()
 
@@ -816,9 +857,13 @@ wordcloud
 
 # ================================ 2021-05-22 ================================
 # pRegresi.inserColRetweetNFavorit()
+# pRegresi.merge10colsWithPreprocessed()
+# pWcloud.formWordcloudFromSVMPrediction()
 # 
 # preprocessor.tfPerTweet(df, dfTerms, "w8k")
 # df = p.getDataframe("tf-pertweet")
+
+pWcloud.formWordcloudFromSVMPrediction()
 # 
 """
 df.loc[df['status_id'] == 'x1328208693461196803']

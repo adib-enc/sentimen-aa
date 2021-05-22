@@ -157,6 +157,8 @@ class Processor:
         r = None
         if typef == "file":
             r = None
+        elif typef == "rl10+cols":
+            r = pd.read_csv("dummy/regresi.linear.10+cols.csv", header=0, lineterminator='\n')
         elif typef == "tf-pertweet":
             r = pd.read_csv("dummy/w8ktf.pertweet.csv", header=0, lineterminator='\n')
         elif typef == "classified-clean":
@@ -264,7 +266,7 @@ class Processor:
                 df.replace('\\t'," ").replace('\\n'," ").replace('\\u'," ").replace('\\',"")
                 df.text.str.translate(str.maketrans("","",string.punctuation))
                 df.text.str.strip()
-                print(df['hashtags'].unique())
+                # print(df['hashtags'].unique())
                 #word count
                 dfs.append(df)
             r = dfs
