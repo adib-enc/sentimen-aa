@@ -395,7 +395,7 @@ fn = "dummy/classified/reclean.classified.csv"
 # pprint(preprocessor.termFrequency(preprocessor.getGlobalWords()))
 
 ### pKmp.process()
-pKmp.process()
+# pKmp.process()
 
 
 ###### svm
@@ -481,6 +481,14 @@ wordcloud
 # print(df['hashtags_vp'].unique())
 # print(df['source'].unique())
 # search
+
+# ================================ 2021-05-28 ================================
+# loading
+df = pSvmnbc.getDF()
+dffeature, label = pSvmnbc.getFeatureAndLabel()
+pSvmnbc.doKFoldNBC(dffeature.values, label, 10)
+
+# wordcloud 5 clusters
 
 # ================================ 2021-05-22 ================================
 # pRegresi.inserColRetweetNFavorit()

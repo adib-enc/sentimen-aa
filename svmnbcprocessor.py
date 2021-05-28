@@ -118,6 +118,50 @@ class SVMNBCProcessor(Processor):
 
         return X_train, X_test, y_train, y_test
 
+    def doKFoldNBC(self, feature, label, nsplits=5):
+        print("nbc 10fold ")
+        print("StratifiedShuffleSplit")
+        
+        X, y = (feature, label)
+        
+        X_train, X_test, y_train, y_test = (None,None,None,None,)
+
+        # kf = KFold(n_splits=nsplits)
+        pSvmnbc = self
+        kf = StratifiedShuffleSplit(n_splits=nsplits, test_size=0.1)
+        kf.get_n_splits(X)
+
+        i = 1
+        print("init::",self.now())
+        # results = []
+        eq = "="*16
+        for train_index, test_index in kf.split(X, y):
+            # print("TRAIN:", train_index, "TEST:", test_index)
+            print(eq,"split",i,eq)
+            print("TRAIN, TEST")
+            print(len(train_index), len(test_index))
+            X_train, X_test = X[train_index], X[test_index]
+            y_train, y_test = y[train_index], y[test_index]
+            print("="*32)
+            print("i",i)
+
+            # === training
+            pSvmnbc.trainTestPairs = (X_train, X_test, y_train, y_test)
+            model, X_train, X_test, y_train, y_test = pSvmnbc.doNBC()
+            #  + model.kernel
+            y_pred, rpaMic, rpaMac = pSvmnbc.doTestModel(model, X_test, y_test, "NBC::")
+            print(self.now())
+            
+            dic = {
+                "train": len(train_index),
+                "test": len(test_index),
+            }
+            out = str((y_pred, rpaMic, rpaMac, dic))
+            self.toFileWithTimestamp("nbc.nsplit" + str(i), out)
+            i+=1
+        
+        # return results
+
     """
     train:test
     90:10
@@ -175,6 +219,7 @@ class SVMNBCProcessor(Processor):
             i+=1
         
         # return results
+
 
     def kfoldAndTrain(self):
         print("kfoldAndTrain")
